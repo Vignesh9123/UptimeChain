@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  name String
+  password String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  websites UserWebsite[]
+}
+
+model Website {
+  id String @id @default(uuid())
+  name String
+  url String @unique
+  userId String
+  users UserWebsite[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum CheckStatus {
+  UP
+  DOWN
+  UNKNOWN
+}
+
+model UserWebsite {
+  id String @id @default(uuid())
+  userId String
+  websiteId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  check_interval Int
+  last_checked DateTime?
+  current_status CheckStatus
+  is_active Boolean @default(true)
+  pings Ping[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ping {
+  id String @id @default(uuid())
+  userId String
+  userWebsiteId String
+  userWebsite UserWebsite @relation(fields: [userWebsiteId], references: [id], onDelete: Cascade)
+  status CheckStatus
+  responseTime Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
