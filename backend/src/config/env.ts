@@ -3,4 +3,5 @@ config()
 
 export const env = {
     PORT: Number(process.env.PORT || 5050),
+    JWT_SECRET_KEY: String(process.env.JWT_SECRET_KEY),
 }
