@@ -28,7 +28,6 @@ model Website {
   id String @id @default(uuid())
   name String
   url String @unique
-  userId String
   users UserWebsite[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
