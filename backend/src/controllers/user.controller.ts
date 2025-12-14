@@ -57,13 +57,11 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
     try {
         const cleanedBody = loginSchema.parse(req.body);
-        console.log('fjd',cleanedBody)
         const user = await prisma.user.findFirst({
             where: {
                 email: cleanedBody.email
             }
         })
-        console.log(user)
         if(!user) {
             return res.status(404).json({message: "User not found"})
         }
@@ -75,7 +73,8 @@ export const loginUser = async (req: Request, res: Response) => {
             return res.status(401).json({message: "Invalid credentials"})
         }
         const token = jwt.sign({id: user.id}, env.JWT_SECRET_KEY, {expiresIn: "1d"});
-        return res.status(200).json({message: "Login successful", token});   
+        user.password = null;
+        return res.status(200).json({message: "Login successful", token, user});   
     } catch (error) {
         console.log(error)
         return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
@@ -102,9 +101,11 @@ export const registerUser = async (req: Request, res: Response) => {
                 role: cleanedBody.role
             }
         })
-        return res.status(201).json({message: "User created", data: user})   
+        user.password = null;
+        return res.status(201).json({message: "User created", user})   
     }
     catch (error) {
+        console.log(error)
         return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
     }
 }

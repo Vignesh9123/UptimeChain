@@ -8,6 +8,7 @@ import { Eye, EyeOff, Mail, Sparkles } from "lucide-react";
 import { axiosClient } from "@/config";
 import { Link } from "react-router-dom";
 import { Select, SelectGroup, SelectItem, SelectLabel, SelectValue, SelectTrigger, SelectContent } from "./ui/select";
+import { useNavigate } from "react-router-dom";
 
 export const UserRole = {
   CLIENT: {
@@ -293,6 +294,8 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
     }
   }, [password, showPassword, showConfirmPassword, isPurplePeeking]);
 
+  const navigate = useNavigate();
+
   const calculatePosition = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (!ref.current) return { faceX: 0, faceY: 0, bodyRotation: 0 };
 
@@ -326,8 +329,8 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
 
     if(!registerPage){ 
       try {
-        const response = await axiosClient.post('/users/login', { email, password });
-        console.log(response.data);
+        await axiosClient.post('/users/login', { email, password });
+        navigate('/client'); //TODO: Change this later to validator/cient
       }
       catch (error: any) {
         console.error(error);
@@ -344,8 +347,8 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
         return;
       }
       try {
-        const response = await axiosClient.post('/users/register', { email, password, name, role });
-        console.log(response.data);
+        await axiosClient.post('/users/register', { email, password, name, role });
+        navigate('/login');
       }
       catch (error: any) {
         console.error(error);
