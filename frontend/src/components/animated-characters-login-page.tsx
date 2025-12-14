@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Sparkles } from "lucide-react";
-import { axiosClient } from "@/config";
 import { Link } from "react-router-dom";
+import { useUserStore } from "@/store/userStore";
 import { Select, SelectGroup, SelectItem, SelectLabel, SelectValue, SelectTrigger, SelectContent } from "./ui/select";
 import { useNavigate } from "react-router-dom";
 
@@ -197,8 +197,8 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
   const [name, setName] = useState("");
   const [role, setRole] = useState<string>(UserRole.CLIENT.value);
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [localError, setLocalError] = useState("");
+  const { login, register, isLoading, error: storeError, clearError } = useUserStore();
   const [mouseX, setMouseX] = useState<number>(0);
   const [mouseY, setMouseY] = useState<number>(0);
   const [isPurpleBlinking, setIsPurpleBlinking] = useState(false);
@@ -323,39 +323,29 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
+    setLocalError("");
+    clearError();
 
-
-    if(!registerPage){ 
+    if (!registerPage) {
       try {
-        await axiosClient.post('/users/login', { email, password });
+        await login({ email, password });
         navigate('/client'); //TODO: Change this later to validator/cient
       }
       catch (error: any) {
         console.error(error);
-        setError(error.response.data.message);
-      }
-      finally {
-        setIsLoading(false);
       }
     }
-    else{
-      if(password !== confirmPassword) {
-        setError("Passwords do not match");
-        setIsLoading(false);
+    else {
+      if (password !== confirmPassword) {
+        setLocalError("Passwords do not match");
         return;
       }
       try {
-        await axiosClient.post('/users/register', { email, password, name, role });
+        await register({ email, password, name, role });
         navigate('/login');
       }
       catch (error: any) {
         console.error(error);
-        setError(error.response.data.message);
-      }
-      finally {
-        setIsLoading(false);
       }
     }
   };
@@ -363,7 +353,7 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Content Section */}
-      <div className={`relative hidden lg:flex flex-col ${ registerPage ? '':'justify-between'} bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-primary-foreground ${registerPage && 'lg:order-2'}`}>
+      <div className={`relative hidden lg:flex flex-col ${registerPage ? '' : 'justify-between'} bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-primary-foreground ${registerPage && 'lg:order-2'}`}>
         <div className="relative z-20">
           <div className="flex items-center gap-2 text-lg font-semibold">
             <div className="size-8 rounded-lg bg-primary-foreground/10 backdrop-blur-sm flex items-center justify-center">
@@ -665,7 +655,7 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
                   {/* Role select */}
                   <div className="space-y-2">
                     <Label htmlFor="role" className="text-sm font-medium">Role</Label>
-                    <Select  value={role} onValueChange={setRole}>
+                    <Select value={role} onValueChange={setRole}>
                       <SelectTrigger id="role" className="w-[180px]">
                         <SelectValue placeholder="Select a role" />
                       </SelectTrigger>
@@ -691,9 +681,9 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
               </a>
             </div>
 
-            {error && (
+            {(localError || storeError) && (
               <div className="p-3 text-sm text-red-400 bg-red-950/20 border border-red-900/30 rounded-lg">
-                {error}
+                {localError || storeError}
               </div>
             )}
 
@@ -714,7 +704,7 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
               type="button"
             >
               <Mail className="mr-2 size-5" />
-             { registerPage ? "Sign up with Google" : "Log in with Google"}
+              {registerPage ? "Sign up with Google" : "Log in with Google"}
             </Button>
           </div>
 
