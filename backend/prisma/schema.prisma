@@ -13,12 +13,17 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  CLIENT
+  VALIDATOR
+}
 
 model User {
   id String @id @default(uuid())
   email String @unique
   name String
   password String?
+  role UserRole
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   websites UserWebsite[]

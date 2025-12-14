@@ -4,6 +4,7 @@ import * as z from 'zod'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { env } from "../config"
+import { UserRole } from "../generated/prisma/enums"
 
 const loginSchema = z.object({
     email: z
@@ -25,7 +26,8 @@ const registerSchema = z.object({
     password: z
         .string()
         .min(8, "Password should be at least 8 characters long")
-        .max(20, "Password should be at most 50 characters long")
+        .max(20, "Password should be at most 50 characters long"),
+    role: z.enum(UserRole).default(UserRole.CLIENT)
     
 })
 
@@ -55,11 +57,13 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
     try {
         const cleanedBody = loginSchema.parse(req.body);
+        console.log('fjd',cleanedBody)
         const user = await prisma.user.findFirst({
             where: {
                 email: cleanedBody.email
             }
         })
+        console.log(user)
         if(!user) {
             return res.status(404).json({message: "User not found"})
         }
@@ -68,11 +72,12 @@ export const loginUser = async (req: Request, res: Response) => {
         }
         const isPasswordMatching = await bcrypt.compare(cleanedBody.password, user.password);
         if(!isPasswordMatching) {
-            return res.status(401).json({message: "Unauthorized"})
+            return res.status(401).json({message: "Invalid credentials"})
         }
         const token = jwt.sign({id: user.id}, env.JWT_SECRET_KEY, {expiresIn: "1d"});
         return res.status(200).json({message: "Login successful", token});   
     } catch (error) {
+        console.log(error)
         return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
     }
 }
@@ -93,7 +98,8 @@ export const registerUser = async (req: Request, res: Response) => {
             data: {
                 email: cleanedBody.email,
                 name: cleanedBody.name,
-                password: hashedPassword
+                password: hashedPassword,
+                role: cleanedBody.role
             }
         })
         return res.status(201).json({message: "User created", data: user})   
