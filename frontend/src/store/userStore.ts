@@ -24,7 +24,7 @@ interface UserState {
 export const useUserStore = create<UserState>((set) => ({
     user: null,
     isAuthenticated: !!localStorage.getItem('token'),
-    isLoading: false,
+    isLoading: true,
     error: null,
 
     login: async (credentials) => {
