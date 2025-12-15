@@ -2,6 +2,7 @@ import express from 'express'
 import { env } from './config'
 import indexRouter from './routes'
 import cors from 'cors'
+import { prisma } from './lib/prisma'
 const app = express()
 
 app.use(express.json())
@@ -11,12 +12,20 @@ app.use(cors({
 }))
 
 app.use("/api/v1", indexRouter)
-app.get("/", (_, res)=>{
+app.get("/", (_, res) => {
     res.status(200).json({
-        message:"Alrighty Let's start"
+        message: "Alrighty Let's start"
     })
 })
 
-app.listen(env.PORT, ()=>{
+try {
+  await prisma.$connect()
+  await prisma.$queryRaw`SELECT 1`
+  console.log("Database is reachable")
+  app.listen(env.PORT, () => {
     console.log(`Server is running on port ${env.PORT}`)
-})
+  })
+} catch (err) {
+  console.error("Database connection failed", err)
+  process.exit(1)
+}

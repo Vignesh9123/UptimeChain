@@ -31,7 +31,6 @@ model User {
 
 model Website {
   id String @id @default(uuid())
-  name String
   url String @unique
   users UserWebsite[]
   createdAt DateTime @default(now())
@@ -46,6 +45,7 @@ enum CheckStatus {
 
 model UserWebsite {
   id String @id @default(uuid())
+  name String
   userId String
   websiteId String
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

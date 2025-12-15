@@ -22,7 +22,6 @@ export const addWebsite = async (req: Request, res: Response) => {
         if(!existingWebsite) {
             website = await prisma.website.create({
                 data: {
-                    name: cleanedBody.name,
                     url: cleanedBody.url,
                 }
             })
@@ -42,6 +41,7 @@ export const addWebsite = async (req: Request, res: Response) => {
         const userWebsite = await prisma.userWebsite.create({
             data: {
                 userId: req.user.id,
+                name: cleanedBody.name,
                 websiteId: website.id,
                 check_interval: cleanedBody.check_interval,
                 is_active: cleanedBody.is_active,
