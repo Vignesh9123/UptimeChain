@@ -10,7 +10,7 @@ import { useUserStore } from "@/store/userStore";
 import { Select, SelectGroup, SelectItem, SelectLabel, SelectValue, SelectTrigger, SelectContent } from "./ui/select";
 import { useNavigate } from "react-router-dom";
 
-export const UserRole = {
+const UserRole = {
   CLIENT: {
     value: "CLIENT",
     label: "Client"
@@ -354,14 +354,7 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Content Section */}
       <div className={`relative hidden lg:flex flex-col ${registerPage ? '' : 'justify-between'} bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-primary-foreground ${registerPage && 'lg:order-2'}`}>
-        <div className="relative z-20">
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            <div className="size-8 rounded-lg bg-primary-foreground/10 backdrop-blur-sm flex items-center justify-center">
-              <Sparkles className="size-4" />
-            </div>
-            <span>UptimeChain</span>
-          </div>
-        </div>
+        
 
         <div className="relative z-20 flex items-end justify-center h-[500px]">
           {/* Cartoon Characters */}
@@ -555,8 +548,8 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
           </div>
 
           <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back!</h1>
-            <p className="text-muted-foreground text-sm">Please enter your details</p>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">{registerPage ? "Create an account" : "Welcome back!"}</h1>
+            <p className="text-muted-foreground text-sm">{registerPage ? "Enter your details to create an account" : "Enter your details to login"}</p>
           </div>
 
 

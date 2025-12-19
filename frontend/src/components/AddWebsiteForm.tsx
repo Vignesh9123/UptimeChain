@@ -7,9 +7,12 @@ import { cn } from "@/lib/utils"
 import { useState } from 'react';
 import { axiosClient } from '@/config';
 
-interface AddWebsiteFormProps extends React.HTMLAttributes<HTMLDivElement> { }
+interface AddWebsiteFormProps extends React.HTMLAttributes<HTMLDivElement> {
+    onClose?: () => void;
+    onSuccess?: () => void;
+}
 
-export function AddWebsiteForm({ className, ...props }: AddWebsiteFormProps) {
+export function AddWebsiteForm({ className, onClose, onSuccess, ...props }: AddWebsiteFormProps) {
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [checkUptime, setCheckUptime] = useState(false);
@@ -44,6 +47,8 @@ export function AddWebsiteForm({ className, ...props }: AddWebsiteFormProps) {
                 is_active: true,
             });
             console.log(response.data);
+            onSuccess?.();
+            onClose?.();
         } catch (error) {
             console.error(error);
         }

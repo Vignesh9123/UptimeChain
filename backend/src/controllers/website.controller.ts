@@ -55,11 +55,14 @@ export const addWebsite = async (req: Request, res: Response) => {
 }
 
 export const getUserWebsites = async (req: Request, res: Response) => {
+    const { take, skip } = req.query;
     try {
         const userWebsites = await prisma.userWebsite.findMany({
             where: {
                 userId: req.user.id,
-            }
+            },
+            take: Number(take),
+            skip: Number(skip),
         })
         return res.status(200).json({message: "User websites fetched", data: userWebsites})
     } catch (error) {

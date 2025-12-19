@@ -61,7 +61,7 @@ export const useUserStore = create<UserState>((set) => ({
     checkAuth: async () => {
         const token = localStorage.getItem('token');
         if (!token) {
-            set({ isAuthenticated: false, user: null });
+            set({ isAuthenticated: false, user: null, isLoading: false });
             return;
         }
         set({ isLoading: true });
