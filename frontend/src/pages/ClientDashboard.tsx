@@ -48,7 +48,7 @@ const ClientDashboard = () => {
     if (isAuthenticated) {
       fetchWebsites();
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [isLoading, isAuthenticated]);
   if (!isLoading && isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -100,25 +100,25 @@ const ClientDashboard = () => {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Status Summary</CardTitle>
               <div className="flex gap-1">
-                <span className="flex items-center text-xs text-green-500"><CheckCircle className="h-3 w-3 mr-1" /> 5</span>
-                <span className="flex items-center text-xs text-red-500"><XCircle className="h-3 w-3 mr-1" /> 1</span>
-                <span className="flex items-center text-xs text-yellow-500"><AlertTriangle className="h-3 w-3 mr-1" /> 0</span>
+                <span className="flex items-center text-xs text-green-500"><CheckCircle className="h-3 w-3 mr-1" /> {websites.length ? websites.length - 1 : 0}</span>
+                <span className="flex items-center text-xs text-red-500"><XCircle className="h-3 w-3 mr-1" /> {websites.length ? 1 : 0}</span>
+                <span className="flex items-center text-xs text-yellow-500"><AlertTriangle className="h-3 w-3 mr-1" /> {websites.length ? 0 : 0}</span>
               </div>
             </CardHeader>
             <CardContent>
               <div className="flex justify-between items-center mt-2">
                 <div className="text-center">
-                  <span className="text-xl font-bold text-green-600">5</span>
+                  <span className="text-xl font-bold text-green-600">{websites.length ? websites.length - 1 : 0}</span>
                   <p className="text-[10px] uppercase text-muted-foreground">Up</p>
                 </div>
                 <div className="h-8 w-px bg-border" />
                 <div className="text-center">
-                  <span className="text-xl font-bold text-red-600">1</span>
+                  <span className="text-xl font-bold text-red-600">{websites.length ? 1 : 0}</span>
                   <p className="text-[10px] uppercase text-muted-foreground">Down</p>
                 </div>
                 <div className="h-8 w-px bg-border" />
                 <div className="text-center">
-                  <span className="text-xl font-bold text-yellow-600">0</span>
+                  <span className="text-xl font-bold text-yellow-600">{websites.length ? 0 : 0}</span>
                   <p className="text-[10px] uppercase text-muted-foreground">Degraded</p>
                 </div>
               </div>

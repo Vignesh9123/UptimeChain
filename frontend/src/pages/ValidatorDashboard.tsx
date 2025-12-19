@@ -2,8 +2,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Coins, Server, Cpu, CheckCircle, Activity } from 'lucide-react';
+import { useEffect } from 'react';
+import { useUserStore } from '@/store/userStore';
+import { useNavigate } from 'react-router-dom';
 
 const ValidatorDashboard = () => {
+  const { isLoading, isAuthenticated } = useUserStore();
+  const navigate = useNavigate();
+  useEffect(() => {
+      if (!isLoading && !isAuthenticated) {
+        navigate('/login');
+      }
+    }, [isLoading, isAuthenticated]);
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">

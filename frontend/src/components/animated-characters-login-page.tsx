@@ -189,13 +189,18 @@ const EyeBall = ({
 
 
 
-function LoginPage({ registerPage }: { registerPage?: boolean }) {
+function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, roleFromQuery?: string }) {
+  if (roleFromQuery) {
+    if (roleFromQuery.toUpperCase() !== UserRole.CLIENT.value && roleFromQuery.toUpperCase() !== UserRole.VALIDATOR.value) {
+      roleFromQuery = UserRole.CLIENT.value;
+    }
+  }
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<string>(UserRole.CLIENT.value);
+  const [role, setRole] = useState<string>(roleFromQuery ? roleFromQuery.toUpperCase() : UserRole.CLIENT.value);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [localError, setLocalError] = useState("");
   const { login, register, isLoading, error: storeError, clearError } = useUserStore();
@@ -328,8 +333,9 @@ function LoginPage({ registerPage }: { registerPage?: boolean }) {
 
     if (!registerPage) {
       try {
-        await login({ email, password });
-        navigate('/client'); //TODO: Change this later to validator/cient
+        const loggedInUser = await login({ email, password });
+        console.log(loggedInUser);
+        navigate(loggedInUser?.role.toLowerCase() === 'client' ? '/client' : '/validator');
       }
       catch (error: any) {
         console.error(error);

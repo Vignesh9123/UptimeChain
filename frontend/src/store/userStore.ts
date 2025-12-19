@@ -14,7 +14,7 @@ interface UserState {
     isAuthenticated: boolean;
     isLoading: boolean;
     error: string | null;
-    login: (credentials: any) => Promise<void>;
+    login: (credentials: any) => Promise<User>;
     register: (data: any) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
@@ -33,7 +33,9 @@ export const useUserStore = create<UserState>((set) => ({
             const response = await axiosClient.post('/users/login', credentials);
             const { token, user } = response.data;
             localStorage.setItem('token', token);
+            console.log(user);
             set({ user, isAuthenticated: true, isLoading: false });
+            return user
         } catch (error: any) {
             const message = error.response?.data?.message || 'Login failed';
             set({ error: message, isLoading: false });
