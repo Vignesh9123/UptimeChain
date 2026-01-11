@@ -6,7 +6,7 @@ declare_id!("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeAH");
 pub const MAX_ROUNDS: usize = 288;
 pub const EXPECTED_VERIFIER_PUBKEY: Pubkey = Pubkey::from_str_const("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeA4"); //TODO: Think abt this
 pub const PROGRAM_AUTHORITY: Pubkey = Pubkey::from_str_const("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeA5"); //TODO: Think abt this
-
+// TODO: Initialize Vaults
 #[program]
 pub mod contract {
     
