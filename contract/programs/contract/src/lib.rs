@@ -3,7 +3,7 @@ use anchor_lang::system_program::{Transfer, transfer};
 
 declare_id!("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeAH");
 
-pub const MAX_ROUNDS: usize = 288;
+pub const MAX_ROUNDS: usize = 16;
 pub const EXPECTED_VERIFIER_PUBKEY: Pubkey = Pubkey::from_str_const("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeA4"); //TODO: Think abt this
 pub const PROGRAM_AUTHORITY: Pubkey = Pubkey::from_str_const("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeA5"); //TODO: Think abt this
 // TODO: Initialize Vaults
@@ -41,20 +41,25 @@ pub mod contract {
         ctx.accounts.target_account.target_id = target_id;
         ctx.accounts.target_account.created_at = Clock::get()?.unix_timestamp;
         ctx.accounts.target_account.bump = ctx.bumps.target_account;
-        ctx.accounts.round_window_account.next_index = 0;
-        ctx.accounts.round_window_account.target_id = target_id;
-        ctx.accounts.round_window_account.window_start = Clock::get()?.unix_timestamp;
-        ctx.accounts.round_window_account.bump = ctx.bumps.round_window_account;
         Ok(())
     }
 
     pub fn submit_round(
         ctx: Context<SubmitRound>,
+        target_id: [u8; 32],
+        round_timestamp: i64,
         uptime_percent: u16,
         median_latency_ms: u32,
         report_hash: [u8; 16],
         reward_per_validator: u64,
     ) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+
+        require!(
+            (round_timestamp - now).abs() <= 120,
+            ErrorCode::InvalidRoundTimestamp
+        );
+
         let vault = &ctx.accounts.reward_vault;
         
         let total_needed = reward_per_validator
@@ -72,29 +77,13 @@ pub mod contract {
         require!(reward_per_validator > 0, ErrorCode::ZeroAmount);
         require!(!ctx.remaining_accounts.is_empty(), ErrorCode::NoRecipients);
 
-        let window = &mut ctx.accounts.round_window_account;
-        let idx = window.next_index as usize;
-        let now = Clock::get()?.unix_timestamp;
-        let prev_idx = if window.next_index == 0 { 
-            (MAX_ROUNDS - 1) as usize 
-        } else { 
-            (window.next_index - 1) as usize 
-        };
-        
-        if window.rounds[prev_idx].timestamp != 0 {
-            require!(
-                window.rounds[prev_idx].timestamp < now,
-                ErrorCode::InvalidRoundOrder
-            );
-        }
-
-        window.rounds[idx] = RoundSummary {
-            timestamp: now,
-            uptime_percent,
-            median_latency_ms,
-            report_hash,
-        };
-
+        let round_summary = &mut ctx.accounts.round_account;
+        round_summary.target_id = target_id;
+        round_summary.round_timestamp = round_timestamp;
+        round_summary.uptime_percent = uptime_percent;
+        round_summary.median_latency_ms = median_latency_ms;
+        round_summary.report_hash = report_hash;
+        round_summary.bump = ctx.bumps.round_account;
         for account_info in ctx.remaining_accounts.iter(){
             **ctx.accounts.reward_vault.to_account_info().try_borrow_mut_lamports()? -= reward_per_validator;
             **account_info.try_borrow_mut_lamports()? += reward_per_validator;
@@ -103,8 +92,6 @@ pub mod contract {
         msg!("Distributed {} lamports to {} validators", 
         reward_per_validator, 
         ctx.remaining_accounts.len());
-
-        window.next_index = (window.next_index + 1) % MAX_ROUNDS as u16;
         Ok(())
     }
     
@@ -146,7 +133,7 @@ pub struct InitializeValidator<'info>{
 
     #[account(
         mut,
-        constraint = authority.key() == PROGRAM_AUTHORITY @ ErrorCode::Unauthorized
+        // constraint = authority.key() == PROGRAM_AUTHORITY @ ErrorCode::Unauthorized
     )]
     pub authority: Signer<'info>,
 
@@ -187,24 +174,15 @@ pub struct InitializeTarget<'info>{
     pub target_account: Account<'info, TargetAccount>,
 
     #[account(
-        init,
-        payer = authority,
-        space = 8 + size_of::<RoundWindowAccount>(),
-        seeds = [b"round_window", target_id.as_ref()],
-        bump
-    )]
-    pub round_window_account: Account<'info, RoundWindowAccount>,
-
-    #[account(
         mut,
-        constraint = authority.key() == PROGRAM_AUTHORITY @ ErrorCode::Unauthorized
+        // constraint = authority.key() == PROGRAM_AUTHORITY @ ErrorCode::Unauthorized
     )]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>
 }
 
 #[derive(Accounts)]
-#[instruction(target_id: [u8; 32])]
+#[instruction(target_id: [u8; 32],round_timestamp: i64)]
 
 pub struct SubmitRound<'info>{
     #[account(
@@ -214,11 +192,13 @@ pub struct SubmitRound<'info>{
     pub target_account: Account<'info, TargetAccount>,
 
     #[account(
-        mut,
-        seeds = [b"round_window", target_account.target_id.as_ref()],
-        bump = round_window_account.bump
+        init,
+        payer = verifier,
+        space = 8 + size_of::<RoundSummaryAccount>(),
+        seeds = [b"round", target_account.target_id.as_ref(), &round_timestamp.to_le_bytes()],
+        bump
     )]
-    pub round_window_account: Account<'info, RoundWindowAccount>,
+    pub round_account: Account<'info, RoundSummaryAccount>, // TODO: I know this is not a good idea (initializing the account for each round) but will think of how to go about this (Leaning towards merkle tree idea let's see)
 
     #[account(
         mut,
@@ -228,9 +208,11 @@ pub struct SubmitRound<'info>{
     pub reward_vault: Account<'info, RewardVault>,
 
     #[account(
-        constraint = verifier.key() == EXPECTED_VERIFIER_PUBKEY
+        mut,
+        // constraint = verifier.key() == EXPECTED_VERIFIER_PUBKEY
     )]
     pub verifier: Signer<'info>,
+    pub system_program: Program<'info, System>
 
 }
 
@@ -268,21 +250,13 @@ pub struct TargetAccount{
     pub bump: u8
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
-pub struct RoundSummary{
-    pub timestamp: i64,
+#[account]
+pub struct RoundSummaryAccount {
+    pub target_id: [u8; 32],
+    pub round_timestamp: i64,
     pub uptime_percent: u16,
     pub median_latency_ms: u32,
-    pub report_hash: [u8; 16]
-}
-
-
-#[account]
-pub struct RoundWindowAccount {
-    pub target_id: [u8; 32],
-    pub window_start: i64,
-    pub next_index: u16,
-    pub rounds: [RoundSummary; MAX_ROUNDS],
+    pub report_hash: [u8; 16],
     pub bump: u8
 }
 
@@ -312,6 +286,8 @@ pub enum ErrorCode {
     #[msg("Unauthorized access")]
     Unauthorized,
     #[msg("Stake amount is 0")]
-    NoStakeAmountToUnstake
-
+    NoStakeAmountToUnstake,
+    #[msg("Invalid round timestamp")]
+    InvalidRoundTimestamp
 }
+
