@@ -12,6 +12,15 @@ pub mod contract {
     
     use super::*;
 
+    pub fn initialize_stake_pool(ctx: Context<InitializeStakePool>) -> Result<()>{
+        ctx.accounts.stake_pool.bump = ctx.bumps.stake_pool;
+        Ok(())
+    }
+    
+    pub fn initialize_reward_vault(ctx: Context<InitializeRewardVault>) -> Result<()>{
+        ctx.accounts.reward_vault.bump = ctx.bumps.reward_vault;
+        Ok(())
+    }
     pub fn initialize_validator(ctx: Context<InitializeValidator>) -> Result<()> {
         ctx.accounts.validator_account.validator_pubkey = ctx.accounts.validator.key();
         ctx.accounts.validator_account.stake_amount = 0;
@@ -118,6 +127,42 @@ pub mod contract {
 }
 
 #[derive(Accounts)]
+pub struct InitializeStakePool<'info>{
+    #[account(
+        init,
+        space = 8 + size_of::<StakeVault>(),
+        payer = authority,
+        seeds = [b"stake_pool"],
+        bump
+    )]
+    pub stake_pool : Account<'info, StakeVault>,
+    #[account(
+        mut,
+        // constraint = authority.key() == PROGRAM_AUTHORITY @ ErrorCode::Unauthorized
+    )]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>
+}
+
+#[derive(Accounts)]
+pub struct InitializeRewardVault<'info>{
+    #[account(
+        init,
+        space = 8 + size_of::<RewardVault>(),
+        payer = authority,
+        seeds = [b"reward_vault"],
+        bump
+    )]
+    pub reward_vault : Account<'info, RewardVault>,
+    #[account(
+        mut,
+        // constraint = authority.key() == PROGRAM_AUTHORITY @ ErrorCode::Unauthorized
+    )]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>
+}
+
+#[derive(Accounts)]
 pub struct InitializeValidator<'info>{
     #[account(
         init,
@@ -149,6 +194,7 @@ pub struct ValidatorStake<'info>{
     )]
     pub validator_account: Account<'info, ValidatorAccount>,
 
+    #[account(mut)]
     pub validator: Signer<'info>,
 
     #[account(
@@ -225,6 +271,7 @@ pub struct ValidatorUnstake<'info>{
     )]
     pub validator_account: Account<'info, ValidatorAccount>,
 
+    #[account(mut)]
     pub validator: Signer<'info>,
 
     #[account(
