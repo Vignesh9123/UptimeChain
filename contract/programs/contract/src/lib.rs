@@ -61,7 +61,7 @@ pub mod contract {
         median_latency_ms: u32,
         report_hash: [u8; 16],
         reward_per_validator: u64,
-    ) -> Result<()> {
+    ) -> Result<()> { // TODO: Add validator stake check
         let now = Clock::get()?.unix_timestamp;
 
         require!(
