@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import z from "zod";
-import { prisma } from "../lib/prisma";
-import { CheckStatus, type UserWebsite, type Website } from "../generated/prisma/client";
+import { prisma } from "@uptime-chain/database";
+import { CheckStatus, type UserWebsite, type Website } from "@uptime-chain/database";
 
 const addWebsiteSchema = z.object({
     name: z.string().min(3).max(20),
@@ -72,7 +72,7 @@ export const getUserWebsites = async (req: Request, res: Response) => {
 
 export const getUserWebsite = async (req: Request, res: Response) => {
     try {
-        const userWebsiteId = req.params.id;
+        const userWebsiteId = req.params.id as string;
         const userWebsite = await prisma.userWebsite.findFirst({
             where: {
                 id: userWebsiteId,

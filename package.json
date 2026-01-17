@@ -1,0 +1,12 @@
+{
+    "name": "uptime-chain-monorepo",
+    "private": true,
+    "workspaces": [
+        "backend",
+        "frontend",
+        "packages/*"
+    ],
+    "dependencies": {
+        "typescript": "^5.0.0"
+    }
+}

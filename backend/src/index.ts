@@ -2,20 +2,20 @@ import express from 'express'
 import { env } from './config'
 import indexRouter from './routes'
 import cors from 'cors'
-import { prisma } from './lib/prisma'
+import { prisma } from '@uptime-chain/database'
 const app = express()
 
 app.use(express.json())
 app.use(cors({
-    origin: env.CLIENT_URL,
-    credentials: true
+  origin: env.CLIENT_URL,
+  credentials: true
 }))
 
 app.use("/api/v1", indexRouter)
 app.get("/", (_, res) => {
-    res.status(200).json({
-        message: "Alrighty Let's start"
-    })
+  res.status(200).json({
+    message: "Alrighty Let's start"
+  })
 })
 
 try {

@@ -1,10 +1,10 @@
 import type { Request, Response } from "express"
-import {prisma} from '../lib/prisma'
+import {prisma} from '@uptime-chain/database'
 import * as z from 'zod'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { env } from "../config"
-import { UserRole } from "../generated/prisma/enums"
+import { UserRole } from "@uptime-chain/database/"
 
 const loginSchema = z.object({
     email: z
