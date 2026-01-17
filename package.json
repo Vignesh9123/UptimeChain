@@ -4,6 +4,7 @@
     "workspaces": [
         "backend",
         "frontend",
+        "hub",
         "packages/*"
     ],
     "dependencies": {
