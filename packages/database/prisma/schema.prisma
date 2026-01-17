@@ -24,15 +24,18 @@ model User {
   name String
   password String?
   role UserRole
+  wallet_pubkey String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  websites UserWebsite[]
+  subscriptions Subscription[]
 }
 
 model Website {
   id String @id @default(uuid())
   url String @unique
-  users UserWebsite[]
+  subscriptions Subscription[]
+  schedules WebsiteSchedule[]
+  roundResults RoundResult[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -43,7 +46,7 @@ enum CheckStatus {
   UNKNOWN
 }
 
-model UserWebsite {
+model Subscription {
   id String @id @default(uuid())
   name String
   userId String
@@ -54,18 +57,25 @@ model UserWebsite {
   last_checked DateTime?
   current_status CheckStatus
   is_active Boolean @default(true)
-  pings Ping[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-model Ping {
+model WebsiteSchedule{
   id String @id @default(uuid())
-  userId String
-  userWebsiteId String
-  userWebsite UserWebsite @relation(fields: [userWebsiteId], references: [id], onDelete: Cascade)
+  websiteId String
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  interval_seconds Int
+  next_run DateTime  
+} 
+model RoundResult {
+  id String @id @default(uuid())
+  websiteId String
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  uptime_percentage Float
   status CheckStatus
   responseTime Float
+  report_hash String
+  solana_address String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
