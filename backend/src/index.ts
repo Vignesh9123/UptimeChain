@@ -10,7 +10,6 @@ app.use(cors({
   origin: env.CLIENT_URL,
   credentials: true
 }))
-
 app.use("/api/v1", indexRouter)
 app.get("/", (_, res) => {
   res.status(200).json({

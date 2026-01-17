@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import z from "zod";
 import { prisma } from "@uptime-chain/database";
-import { CheckStatus, type UserWebsite, type Website } from "@uptime-chain/database";
+import { CheckStatus, type Subscription, type Website } from "@uptime-chain/database";
 
 const addWebsiteSchema = z.object({
     name: z.string().min(3).max(20),
@@ -29,26 +29,53 @@ export const addWebsite = async (req: Request, res: Response) => {
         else {
             website = existingWebsite;
         }
-        const existingUserWebsite = await prisma.userWebsite.findFirst({
+        const existingUserSubscription = await prisma.subscription.findFirst({
             where: {
                 userId: req.user.id,
                 websiteId: website.id,
             }
         })
-        if(existingUserWebsite) {
+        if(existingUserSubscription) {
             return res.status(400).json({message: "Website already added to user"})
         }
-        const userWebsite = await prisma.userWebsite.create({
+        const userSubscription = await prisma.subscription.create({
             data: {
                 userId: req.user.id,
                 name: cleanedBody.name,
                 websiteId: website.id,
-                check_interval: cleanedBody.check_interval,
+                check_interval: cleanedBody.check_interval * 60,
                 is_active: cleanedBody.is_active,
                 current_status: CheckStatus.UNKNOWN,
             }
         })
-        return res.status(201).json({message: "Website added to user", data: userWebsite})
+        const existingSchedule = await prisma.websiteSchedule.findFirst({
+            where: {
+                websiteId: website.id,
+            }
+        })
+        if(!existingSchedule) {
+            await prisma.websiteSchedule.create({
+                data: {
+                    websiteId: website.id,
+                    interval_seconds: cleanedBody.check_interval * 60,
+                    next_run: new Date(Date.now() + cleanedBody.check_interval * 60 * 1000),
+                }
+            })
+        }
+        else {
+            if(cleanedBody.check_interval < existingSchedule.interval_seconds) {
+                await prisma.websiteSchedule.update({
+                    where: {
+                        id: existingSchedule.id,
+                    },
+                    data: {
+                        interval_seconds: cleanedBody.check_interval * 60,
+                        next_run: new Date(Date.now() + cleanedBody.check_interval * 60 * 1000),
+                    }
+                })
+            }
+        }
+        return res.status(201).json({message: "Website added to user", data: userSubscription})
     } catch (error) {
         return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
     }
@@ -57,7 +84,7 @@ export const addWebsite = async (req: Request, res: Response) => {
 export const getUserWebsites = async (req: Request, res: Response) => {
     const { take, skip } = req.query;
     try {
-        const userWebsites = await prisma.userWebsite.findMany({
+        const userWebsites = await prisma.subscription.findMany({
             where: {
                 userId: req.user.id,
             },
@@ -73,7 +100,7 @@ export const getUserWebsites = async (req: Request, res: Response) => {
 export const getUserWebsite = async (req: Request, res: Response) => {
     try {
         const userWebsiteId = req.params.id as string;
-        const userWebsite = await prisma.userWebsite.findFirst({
+        const userWebsite = await prisma.subscription.findFirst({
             where: {
                 id: userWebsiteId,
                 userId: req.user.id
