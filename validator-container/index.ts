@@ -34,37 +34,42 @@ async function sslCertExpiryCheck(targetUrl: string){
     return expiryTs;
 }
 async function main(){
-    if(!PRIVATE_KEY) return
-    if(!PUBLIC_KEY) return
-    const {data} = await queueAxios.get("/fetch-task");
-    const {task} = data
-    const {targetUrl} = task;
-    // const targetUrl = process.argv[2]
-    if(!targetUrl) return
-    const latency = await latencyAndUptimeCheck(targetUrl)
-    const expiryTs = await sslCertExpiryCheck(targetUrl)
-
-    const dataToSign = {
-        targetUrl,
-        latency,
-        certificateExpiryTs: expiryTs
+    console.log("Starting to pull task")
+    try {
+        if(!PRIVATE_KEY) return
+        if(!PUBLIC_KEY) return
+        const {data} = await queueAxios.get("/fetch-task");
+        if(!data.task) return
+        const {task} = data
+        console.log("Task fetched successfully", task)
+        const {targetUrl} = task;
+        // const targetUrl = process.argv[2]
+        if(!targetUrl) return
+        const latency = await latencyAndUptimeCheck(targetUrl)
+        const expiryTs = await sslCertExpiryCheck(targetUrl)
+    
+        const dataToSign = {
+            targetUrl,
+            latency,
+            certificateExpiryTs: expiryTs
+        }
+        const secretKey = bs58.decode(PRIVATE_KEY);
+        const message = JSON.stringify(dataToSign);
+    
+        const messageBytes = decodeUTF8(message);
+    
+        const signature = nacl.sign.detached(messageBytes, secretKey);
+    
+        const signatureBase58 = bs58.encode(signature);
+        const dataToSend = {
+            data: dataToSign,
+            signature: signatureBase58,
+            publicKey: PUBLIC_KEY
+        }
+        await queueAxios.post("/result-submit", dataToSend);
+    } catch (error) {
+        console.log("Error in main", error)
     }
-    const secretKey = bs58.decode(PRIVATE_KEY);
-    const message = JSON.stringify(dataToSign);
-
-    const messageBytes = decodeUTF8(message);
-
-    const signature = nacl.sign.detached(messageBytes, secretKey);
-
-    const signatureBase58 = bs58.encode(signature);
-    const dataToSend = {
-        data: dataToSign,
-        signature: signatureBase58,
-        publicKey: PUBLIC_KEY
-    }
-    await queueAxios.post("/result-submit", {
-        result: dataToSend
-    });    
 }
-
 main()
+setInterval(main, 20 * 1000)
