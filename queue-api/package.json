@@ -1,0 +1,18 @@
+{
+  "name": "queue-api",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/express": "^5.0.6"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "redis": "^5.10.0",
+    "zod": "^4.3.5"
+  }
+}

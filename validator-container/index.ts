@@ -36,7 +36,7 @@ async function sslCertExpiryCheck(targetUrl: string){
 async function main(){
     if(!PRIVATE_KEY) return
     if(!PUBLIC_KEY) return
-    const {data} = await queueAxios.get("/get-task");
+    const {data} = await queueAxios.get("/fetch-task");
     const {task} = data
     const {targetUrl} = task;
     // const targetUrl = process.argv[2]
