@@ -5,6 +5,7 @@
         "backend",
         "frontend",
         "hub",
+        "verifier",
         "packages/*"
     ],
     "dependencies": {
