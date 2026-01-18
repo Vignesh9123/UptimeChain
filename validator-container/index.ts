@@ -42,7 +42,7 @@ async function main(){
         if(!data.task) return
         const {task} = data
         console.log("Task fetched successfully", task)
-        const {targetUrl} = task;
+        const {targetUrl, roundTimestamp} = task;
         // const targetUrl = process.argv[2]
         if(!targetUrl) return
         const latency = await latencyAndUptimeCheck(targetUrl)
@@ -50,6 +50,7 @@ async function main(){
     
         const dataToSign = {
             targetUrl,
+            roundTimestamp,
             latency,
             certificateExpiryTs: expiryTs
         }
@@ -64,7 +65,7 @@ async function main(){
         const dataToSend = {
             data: dataToSign,
             signature: signatureBase58,
-            publicKey: PUBLIC_KEY
+            validatorPubkey: PUBLIC_KEY
         }
         await queueAxios.post("/result-submit", dataToSend);
     } catch (error) {
