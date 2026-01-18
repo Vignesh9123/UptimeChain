@@ -1,9 +1,13 @@
 import express from 'express';
 import { createClient } from 'redis';
 import * as z from 'zod'
+import { config } from 'dotenv'
+config()
 const app = express()
 
 const QUEUE_URL = process.env.QUEUE_URL
+const VERIFIER_URL = process.env.VERIFIER_URL
+if(!VERIFIER_URL || !QUEUE_URL) throw new Error("Missing environment variables")
 app.use(express.json())
 const client = await createClient({
     url: QUEUE_URL
@@ -19,10 +23,11 @@ const resultSchema = z.object({
     data: z.object({
         targetUrl: z.url(),
         latency: z.number().int().min(0),
-        certificateExpiryTs: z.number().int().min(0)
+        certificateExpiryTs: z.number().int().min(0),
+        roundTimestamp: z.number().int().min(0)
     }),
     signature: z.string(),
-    publicKey: z.string()
+    validatorPubkey: z.string()
 })
 
 app.post("/api/push-task", async (req, res)=>{
@@ -102,7 +107,17 @@ app.post("/api/result-submit", async (req, res) => {
       const cleanedBody = resultSchema.parse(body)
       console.log("Result submitted successfully", cleanedBody)
       await client.setEx(`result:${cleanedBody.data.targetUrl + req.headers["x-public-key"]}`, 2 * 60, JSON.stringify(cleanedBody))
-      // push to result queue 
+      const resultToSend = {
+        ...cleanedBody,
+        submittedAt: Date.now(),
+      }
+      await fetch(`${VERIFIER_URL}/submit-round`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(resultToSend),
+      });
       return res
       .status(200)
       .json({
