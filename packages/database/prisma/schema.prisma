@@ -72,6 +72,7 @@ model RoundResult {
   websiteId String
   website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
   uptime_percentage Float
+  roundTimestamp DateTime
   status CheckStatus
   responseTime Float
   report_hash String
