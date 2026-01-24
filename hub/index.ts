@@ -25,6 +25,24 @@ async function checkWebsiteAndPushToQueue(){
             roundTimestamp: now
         }
         await queueAxios.post("/push-task", dataToPush)
+        const activeValidatorEntries = await prisma.user.findMany({
+            where: {
+                role: "VALIDATOR"
+            },
+            select: {
+                wallet_pubkey: true
+            }
+        })
+        const activeValidators = activeValidatorEntries.map(entry => {
+            if(entry.wallet_pubkey){
+                return entry.wallet_pubkey
+            }
+        }) as string[]
+        await axios.post("http://localhost:8080/start-round", {
+            targetUrl: website.url,
+            roundTimestamp: now,
+            activeValidators
+        })
         const new_next_run = new Date(now + subscription.interval_seconds * 1000)
         await prisma.websiteSchedule.update({
             where: {
