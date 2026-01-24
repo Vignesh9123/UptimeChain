@@ -2,13 +2,14 @@ import express from 'express';
 import { config } from 'dotenv'
 config()
 import {prisma} from '@uptime-chain/database'
-import * as nacl from 'tweetnacl';
+import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PinataSDK } from "pinata";
 import { decodeUTF8 } from 'tweetnacl-util';
 import { PublicKey } from '@solana/web3.js';
 
 const app = express();
+app.use(express.json())
 const ROUND_TIMEOUT_MS = 120_000;
 const MIN_QUORUM_RATIO = 2 / 3;
 const MIN_VALIDATORS = 3;
@@ -77,13 +78,14 @@ type ValidatorSubmission = {
     roundTimestamp: number,
     submission: ValidatorSubmission
   ) {
+    console.log("Received submission", submission)
     const key = roundKey(targetUrl, roundTimestamp);
     const round = rounds.get(key);
     if (!round || round.finalized) return;
   
-    if (!round.expectedValidators.has(submission.validatorPubkey)) return;
+    // if (!round.expectedValidators.has(submission.validatorPubkey)) return;
   
-    if (round.submissions.has(submission.validatorPubkey)) return;
+    // if (round.submissions.has(submission.validatorPubkey)) return;
   
     if (!verifySignature(submission)) return;
   
@@ -101,6 +103,7 @@ type ValidatorSubmission = {
     const timedOut = now - round.startedAt >= ROUND_TIMEOUT_MS;
   
     if (submissionCount >= quorum || timedOut) {
+      console.log("Finalizing round")
       finalizeRound(round);
     }
   }
@@ -130,37 +133,27 @@ type ValidatorSubmission = {
       uptimePercent,
       medianLatency,
     };
-  
+    console.log("Report", report)
     const report_hash = await uploadToIpfs(report);
-  
-    await submitRoundOnChain({
+    console.log("Report Hash", report_hash)
+    await submitRoundOffChain({
       targetUrl: round.targetUrl as string,
       roundTimestamp: round.roundTimestamp,
       uptimePercent,
       medianLatency: medianLatency!,
       report_hash
     });
+    console.log("Submitted on chain")
     const website = await prisma.website.findUnique({
       where:{
         url:round.targetUrl as string
       }
     })
-    prisma.roundResult.create({
-      data:{
-        uptime_percentage:uptimePercent,
-        responseTime:medianLatency!,
-        websiteId:website?.id!,
-        status: "UP",
-        report_hash,
-        solana_address:""
-      }
-    })
-  
-    // Cleanup
     rounds.delete(roundKey(round.targetUrl, round.roundTimestamp));
   }    
 
   app.post("/start-round", (req, res)=>{
+    console.log("Req body", req.body)
     const {body }: {body:{
       targetUrl: String,
     roundTimestamp: number,
@@ -171,6 +164,7 @@ type ValidatorSubmission = {
     roundTimestamp: number,
     activeValidators: string[]
     } = body
+    console.log("Starting round")
     startRound(roundData.targetUrl, roundData.roundTimestamp, roundData.activeValidators)
     res.status(200).json({message:"Round started successfully"})
   })
@@ -202,7 +196,7 @@ type ValidatorSubmission = {
     res.status(200).json({message:"Round submitted successfully"})
   })
   
-async function submitRoundOnChain({
+async function submitRoundOffChain({
     targetUrl,
     roundTimestamp,
     uptimePercent,
@@ -229,6 +223,7 @@ async function submitRoundOnChain({
         solana_address: "",
         uptime_percentage: uptimePercent,
         responseTime: medianLatency,
+        roundTimestamp: new Date(roundTimestamp),
         report_hash,
         status: "UP",
       },
