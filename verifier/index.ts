@@ -2,12 +2,17 @@ import express from 'express';
 import { config } from 'dotenv'
 config()
 import {prisma} from '@uptime-chain/database'
+import * as nacl from 'tweetnacl';
+import bs58 from 'bs58';
+import { PinataSDK } from "pinata";
+import { decodeUTF8 } from 'tweetnacl-util';
+import { PublicKey } from '@solana/web3.js';
+
 const app = express();
 const ROUND_TIMEOUT_MS = 120_000;
 const MIN_QUORUM_RATIO = 2 / 3;
 const MIN_VALIDATORS = 3;
 
-import { PinataSDK } from "pinata";
 
 const pinata = new PinataSDK({
   pinataJwt: process.env.PINATA_JWT,
@@ -76,14 +81,11 @@ type ValidatorSubmission = {
     const round = rounds.get(key);
     if (!round || round.finalized) return;
   
-    // Validate identity
     if (!round.expectedValidators.has(submission.validatorPubkey)) return;
   
-    // Prevent duplicates
     if (round.submissions.has(submission.validatorPubkey)) return;
   
-    // Verify signature
-    // if (!verifySignature(submission)) return;
+    if (!verifySignature(submission)) return;
   
     round.submissions.set(submission.validatorPubkey, submission);
   
@@ -107,13 +109,10 @@ type ValidatorSubmission = {
   
     const submissions = Array.from(round.submissions.values());
   
-    // Aggregate uptime
     const upCount = submissions.filter(s => s.data.latency).length;
     const uptimePercent = Math.round(
       (upCount / submissions.length) * 10000
-    ); // basis points
-  
-    // Median latency
+    ); 
     const latencies = submissions
       .filter(s => s.data.latency)
       .map(s => s.data.latency)
@@ -124,7 +123,6 @@ type ValidatorSubmission = {
         ? 0
         : latencies[Math.floor(latencies.length / 2)];
   
-    // Build report
     const report = {
       targetUrl: round.targetUrl,
       roundTimestamp: round.roundTimestamp,
@@ -133,10 +131,8 @@ type ValidatorSubmission = {
       medianLatency,
     };
   
-    // Upload report to IPFS
     const report_hash = await uploadToIpfs(report);
   
-    // Submit on chain
     await submitRoundOnChain({
       targetUrl: round.targetUrl as string,
       roundTimestamp: round.roundTimestamp,
@@ -238,7 +234,21 @@ async function submitRoundOnChain({
       },
     });
     console.log("Round submitted to chain:", roundResult);
-  }
+}
+
+async function verifySignature(submission: ValidatorSubmission){
+    const {signature, data, validatorPubkey} = submission
+    const messageBytesToVerify = decodeUTF8(JSON.stringify(data))
+    const signatureBytesToVerify = bs58.decode(signature)
+    const publicKey = new PublicKey(validatorPubkey).toBytes()
+    const isVerified = nacl.sign.detached.verify(
+        messageBytesToVerify,
+        signatureBytesToVerify,
+        publicKey
+    );
+    return isVerified
+}
+
 async function uploadToIpfs(report: any){
   const file = new File([JSON.stringify(report)], "report.json", { type: "application/json" });
   const upload = await pinata.upload.public.file(file);
