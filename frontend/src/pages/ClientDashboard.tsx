@@ -9,7 +9,7 @@ import { AddWebsiteForm } from '@/components/AddWebsiteForm';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useUserStore } from '@/store/userStore';
-import { getUserWebsites, type UserWebsite } from '@/services/website.service';
+import { getLatestResultsForUser, getUserWebsites, type UserWebsite } from '@/services/website.service';
 const data = [
   { name: 'Mon', uptime: 99.9 },
   { name: 'Tue', uptime: 100 },
@@ -23,8 +23,9 @@ const data = [
 const ClientDashboard = () => {
   const [addWebsiteDialogOpen, setAddWebsiteDialogOpen] = useState(false);
   const [websites, setWebsites] = useState<UserWebsite[]>([]);
+  const [latestResults, setLatestResults] = useState<any[]>([]);
   const [isLoadingWebsites, setIsLoadingWebsites] = useState(true);
-  const { user, isAuthenticated, isLoading } = useUserStore();
+  const { isAuthenticated, isLoading } = useUserStore();
   const navigate = useNavigate();
   const fetchWebsites = () => {
     setIsLoadingWebsites(true);
@@ -40,6 +41,21 @@ const ClientDashboard = () => {
       })
   }
 
+  const fetchLatestResults = () => {
+    // setIsLoadingWebsites(true);
+    getLatestResultsForUser()
+      .then(data => {
+        console.log(data)
+        setLatestResults(data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch latest results:", err);
+      })
+      .finally(() => {
+        // setIsLoadingWebsites(false);
+      })
+  }
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate('/login');
@@ -49,6 +65,13 @@ const ClientDashboard = () => {
       fetchWebsites();
     }
   }, [isLoading, isAuthenticated]);
+
+  useEffect(()=>{
+    const interval = setInterval(() => {
+      fetchLatestResults();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [])
   if (!isLoading && isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -108,17 +131,17 @@ const ClientDashboard = () => {
             <CardContent>
               <div className="flex justify-between items-center mt-2">
                 <div className="text-center">
-                  <span className="text-xl font-bold text-green-600">{websites.length ? websites.length - 1 : 0}</span>
+                  <span className="text-xl font-bold text-green-600">{latestResults.filter((result) => result.status === 'UP').length}</span>
                   <p className="text-[10px] uppercase text-muted-foreground">Up</p>
                 </div>
                 <div className="h-8 w-px bg-border" />
                 <div className="text-center">
-                  <span className="text-xl font-bold text-red-600">{websites.length ? 1 : 0}</span>
+                  <span className="text-xl font-bold text-red-600">{latestResults.filter((result) => result.status !== 'UP').length}</span>
                   <p className="text-[10px] uppercase text-muted-foreground">Down</p>
                 </div>
                 <div className="h-8 w-px bg-border" />
                 <div className="text-center">
-                  <span className="text-xl font-bold text-yellow-600">{websites.length ? 0 : 0}</span>
+                  <span className="text-xl font-bold text-yellow-600">{latestResults.filter((result) => result.status === 'UNKNOWN').length}</span>
                   <p className="text-[10px] uppercase text-muted-foreground">Degraded</p>
                 </div>
               </div>
@@ -202,9 +225,10 @@ const ClientDashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {websites.map((website) => {
-                      // Random simulation for demo
-                      const isUp = Math.random() > 0.2;
-                      const latency = Math.floor(Math.random() * (150 - 20) + 20);
+                      const latestResultOfWebsite = latestResults.find((result) => result.websiteId === website.websiteId)
+                      console.log(latestResultOfWebsite)
+                      const isUp = latestResultOfWebsite?.status === 'UP';
+                      const latency = latestResultOfWebsite?.responseTime;
 
                       return (
                         <TableRow key={website.id}>
