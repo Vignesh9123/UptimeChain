@@ -9,6 +9,7 @@ const QUEUE_URL = process.env.QUEUE_URL
 const VERIFIER_URL = process.env.VERIFIER_URL
 if(!VERIFIER_URL || !QUEUE_URL) throw new Error("Missing environment variables")
 app.use(express.json())
+app.set("trust proxy", true)
 const client = await createClient({
     url: QUEUE_URL
 })
