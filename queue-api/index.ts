@@ -25,7 +25,8 @@ const resultSchema = z.object({
         targetUrl: z.url(),
         latency: z.number().int().min(0),
         certificateExpiryTs: z.number().int().min(0),
-        roundTimestamp: z.number().int().min(0)
+        roundTimestamp: z.number().int().min(0),
+        status: z.enum(["UP", "DOWN", "UNKNOWN"]),
     }),
     signature: z.string(),
     validatorPubkey: z.string()

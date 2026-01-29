@@ -17,13 +17,30 @@ const queueAxios = axios.create({
 })
 
 async function latencyAndUptimeCheck(targetUrl: string){
-    const startTime = Date.now()
-    const response = await fetch(targetUrl, {method:"HEAD"});
-    // console.log("response is", response)
-    const endTime = Date.now()
-    const latency = endTime - startTime;
-    console.log("Time taken to ping", targetUrl,"is ", latency, "ms")
-    return latency
+    const promise1 = new Promise<{status: string, latency: number}>((resolve, reject) => {
+      setTimeout(() => {
+        resolve({status:"DOWN", latency: 0})
+      }, 10000);  
+    })
+    const promise2 = new Promise<{status: string, latency: number}>((resolve, reject) => {
+        const startTime = Date.now()
+        fetch(targetUrl, {method:"HEAD"})
+        .then(async (response) => {
+            if(response.status !== 200){
+                resolve({status:"DOWN", latency: 0})
+            }
+            const endTime = Date.now()
+            const latency = endTime - startTime;
+            console.log("Time taken to ping", targetUrl,"is ", latency, "ms")
+            resolve({status:"UP", latency})
+        })
+        .catch((error) => {
+            console.log("Error in latencyAndUptimeCheck", error)
+            resolve({status:"DOWN", latency: 0})
+        })
+    })
+    const result = await Promise.race([promise1, promise2]) as {status: string, latency: number}
+    return result
 }
 
 async function sslCertExpiryCheck(targetUrl: string){
@@ -45,12 +62,13 @@ async function main(){
         const {targetUrl, roundTimestamp} = task;
         // const targetUrl = process.argv[2]
         if(!targetUrl) return
-        const latency = await latencyAndUptimeCheck(targetUrl)
+        const {status, latency} = await latencyAndUptimeCheck(targetUrl)
         const expiryTs = await sslCertExpiryCheck(targetUrl)
     
         const dataToSign = {
             targetUrl,
             roundTimestamp,
+            status,
             latency,
             certificateExpiryTs: expiryTs
         }

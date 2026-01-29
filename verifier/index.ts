@@ -1,7 +1,7 @@
 import express from 'express';
 import { config } from 'dotenv'
 config()
-import {prisma} from '@uptime-chain/database'
+import {CheckStatus, prisma} from '@uptime-chain/database'
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PinataSDK } from "pinata";
@@ -26,6 +26,7 @@ type ValidatorSubmission = {
     data:{
         targetUrl: string;
         latency: number;
+        status: string;
         certificateExpiryTs: number;
     };
     submittedAt: number;
@@ -132,6 +133,7 @@ type ValidatorSubmission = {
       submissions,
       uptimePercent,
       medianLatency,
+      status: submissions[0]?.data.status
     };
     console.log("Report", report)
     const report_hash = await uploadToIpfs(report);
@@ -141,7 +143,8 @@ type ValidatorSubmission = {
       roundTimestamp: round.roundTimestamp,
       uptimePercent,
       medianLatency: medianLatency!,
-      report_hash
+      report_hash,
+      status: submissions[0]?.data.status!
     });
     console.log("Submitted on chain")
     const website = await prisma.website.findUnique({
@@ -178,6 +181,7 @@ type ValidatorSubmission = {
       latency: number;
       certificateExpiryTs: number;
       roundTimestamp: number,
+      status: string,
     };
     submittedAt: number;
     }} = req 
@@ -189,6 +193,7 @@ type ValidatorSubmission = {
       latency: number;
       certificateExpiryTs: number;
       roundTimestamp: number,
+      status: string,
     };
     submittedAt: number;
     } = body
@@ -202,12 +207,14 @@ async function submitRoundOffChain({
     uptimePercent,
     medianLatency,
     report_hash,
+    status
   }: {
     targetUrl: string;
     roundTimestamp: number;
     uptimePercent: number;
     medianLatency: number;
     report_hash: string;
+    status: string
   }) {
     const website = await prisma.website.findUnique({
       where: {
@@ -225,7 +232,7 @@ async function submitRoundOffChain({
         responseTime: medianLatency,
         roundTimestamp: new Date(roundTimestamp),
         report_hash,
-        status: "UP",
+        status: status as CheckStatus,
       },
     });
     console.log("Round submitted to chain:", roundResult);
