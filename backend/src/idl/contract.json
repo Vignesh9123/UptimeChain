@@ -1,0 +1,730 @@
+{
+  "address": "3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeAH",
+  "metadata": {
+    "name": "contract",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize_reward_vault",
+      "discriminator": [
+        33,
+        115,
+        172,
+        200,
+        102,
+        221,
+        242,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "reward_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_stake_pool",
+      "discriminator": [
+        48,
+        189,
+        243,
+        73,
+        19,
+        67,
+        36,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "stake_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_target",
+      "discriminator": [
+        167,
+        178,
+        27,
+        189,
+        27,
+        100,
+        156,
+        184
+      ],
+      "accounts": [
+        {
+          "name": "target_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "target_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "target_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_validator",
+      "discriminator": [
+        1,
+        208,
+        135,
+        238,
+        15,
+        185,
+        20,
+        172
+      ],
+      "accounts": [
+        {
+          "name": "validator_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  108,
+                  105,
+                  100,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "validator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "validator"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_round",
+      "discriminator": [
+        249,
+        136,
+        54,
+        171,
+        179,
+        230,
+        145,
+        107
+      ],
+      "accounts": [
+        {
+          "name": "target_account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  114,
+                  103,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "target_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "target_account.target_id",
+                "account": "TargetAccount"
+              },
+              {
+                "kind": "arg",
+                "path": "round_timestamp"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reward_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "verifier",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "target_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "round_timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "uptime_percent",
+          "type": "u16"
+        },
+        {
+          "name": "median_latency_ms",
+          "type": "u32"
+        },
+        {
+          "name": "report_hash",
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        },
+        {
+          "name": "reward_per_validator",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "validator_stake",
+      "discriminator": [
+        202,
+        103,
+        63,
+        147,
+        231,
+        211,
+        229,
+        42
+      ],
+      "accounts": [
+        {
+          "name": "validator_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  108,
+                  105,
+                  100,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "validator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "validator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "stake_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "validator_unstake",
+      "discriminator": [
+        15,
+        21,
+        113,
+        173,
+        44,
+        95,
+        78,
+        123
+      ],
+      "accounts": [
+        {
+          "name": "validator_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  108,
+                  105,
+                  100,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "validator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "validator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "stake_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "RewardVault",
+      "discriminator": [
+        201,
+        22,
+        221,
+        167,
+        208,
+        16,
+        210,
+        33
+      ]
+    },
+    {
+      "name": "RoundSummaryAccount",
+      "discriminator": [
+        218,
+        60,
+        246,
+        235,
+        244,
+        100,
+        4,
+        81
+      ]
+    },
+    {
+      "name": "StakeVault",
+      "discriminator": [
+        192,
+        112,
+        65,
+        125,
+        129,
+        151,
+        173,
+        226
+      ]
+    },
+    {
+      "name": "TargetAccount",
+      "discriminator": [
+        140,
+        246,
+        247,
+        200,
+        198,
+        220,
+        24,
+        250
+      ]
+    },
+    {
+      "name": "ValidatorAccount",
+      "discriminator": [
+        32,
+        144,
+        229,
+        203,
+        9,
+        154,
+        158,
+        255
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientFunds",
+      "msg": "Vault has insufficient funds"
+    },
+    {
+      "code": 6001,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6002,
+      "name": "ZeroAmount",
+      "msg": "Reward amount must be greater than zero"
+    },
+    {
+      "code": 6003,
+      "name": "NoRecipients",
+      "msg": "No recipients provided"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidRoundOrder",
+      "msg": "InvalidRoundOrder"
+    },
+    {
+      "code": 6005,
+      "name": "Unauthorized",
+      "msg": "Unauthorized access"
+    },
+    {
+      "code": 6006,
+      "name": "NoStakeAmountToUnstake",
+      "msg": "Stake amount is 0"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidRoundTimestamp",
+      "msg": "Invalid round timestamp"
+    }
+  ],
+  "types": [
+    {
+      "name": "RewardVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundSummaryAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "target_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "round_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "uptime_percent",
+            "type": "u16"
+          },
+          {
+            "name": "median_latency_ms",
+            "type": "u32"
+          },
+          {
+            "name": "report_hash",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StakeVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TargetAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "target_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ValidatorAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "validator_pubkey",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_amount",
+            "type": "u64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
