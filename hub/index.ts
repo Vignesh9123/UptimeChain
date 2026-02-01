@@ -1,8 +1,12 @@
 import { prisma } from "@uptime-chain/database";
 const QUEUE_API = 'http://localhost:3000/api'
+const VERIFIER_API = 'http://localhost:8080'
 import axios from "axios";
 const queueAxios = axios.create({
     baseURL: QUEUE_API,
+})
+const verifierAxios = axios.create({
+    baseURL: VERIFIER_API,
 })
 async function checkWebsiteAndPushToQueue(){
     console.log("subscriptions pull start")
@@ -25,20 +29,24 @@ async function checkWebsiteAndPushToQueue(){
             roundTimestamp: now
         }
         await queueAxios.post("/push-task", dataToPush)
-        const activeValidatorEntries = await prisma.user.findMany({
+        const activeValidatorEntries = await prisma.validator.findMany({
             where: {
-                role: "VALIDATOR"
+                is_active: true
             },
             select: {
-                wallet_pubkey: true
+                user: {
+                    select: {
+                        wallet_pubkey: true
+                    }
+                }
             }
         })
         const activeValidators = activeValidatorEntries.map(entry => {
-            if(entry.wallet_pubkey){
-                return entry.wallet_pubkey
+            if(entry.user.wallet_pubkey){
+                return entry.user.wallet_pubkey
             }
-        }) as string[]
-        await axios.post("http://localhost:8080/start-round", {
+        }).filter(Boolean) as string[]
+        await verifierAxios.post('/start-round', {
             targetUrl: website.url,
             roundTimestamp: now,
             activeValidators
