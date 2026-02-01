@@ -101,6 +101,7 @@ describe("uptime_contract", () => {
     })
     .signers([validator])
     .rpc()
+    console.log("Validator staked", stakeTxn)
     const round_timestamp =  new anchor.BN(Math.floor(Date.now()/1000))
     const rewardSeeds = [
       Buffer.from("reward_vault")
