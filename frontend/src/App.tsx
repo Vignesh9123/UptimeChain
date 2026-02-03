@@ -8,23 +8,37 @@ import Login from './pages/LoginPage';
 import Register from './pages/RegisterPage';
 import { AuthProvider } from './components/AuthProvider';
 import { ThemeProvider } from './components/theme-provider';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { useMemo } from 'react';
+
+import '@solana/wallet-adapter-react-ui/styles.css';
 
 function App() {
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+
   return (
-    <Router>
-      <AuthProvider>
-        <ThemeProvider defaultTheme="system" storageKey='uptimechain-ui-theme'>
-          <Routes>
-            <Route path="/" element={<Layout><LandingPage /></Layout>} />
-            <Route path="/login" element={<Layout><Login /></Layout>} />
-            <Route path="/register" element={<Layout><Register /></Layout>} />
-            <Route path="/client" element={<Layout><ClientDashboard /></Layout>} />
-            <Route path="/client/add-website" element={<Layout><AddWebsitePage /></Layout>} />
-            <Route path="/validator" element={<Layout><ValidatorDashboard /></Layout>} />
-          </Routes>
-        </ThemeProvider>
-      </AuthProvider>
-    </Router>
+    <ConnectionProvider endpoint={"http://localhost:8899"}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <Router>
+            <AuthProvider>
+              <ThemeProvider defaultTheme="system" storageKey='uptimechain-ui-theme'>
+                <Routes>
+                  <Route path="/" element={<Layout><LandingPage /></Layout>} />
+                  <Route path="/login" element={<Layout><Login /></Layout>} />
+                  <Route path="/register" element={<Layout><Register /></Layout>} />
+                  <Route path="/client" element={<Layout><ClientDashboard /></Layout>} />
+                  <Route path="/client/add-website" element={<Layout><AddWebsitePage /></Layout>} />
+                  <Route path="/validator" element={<Layout><ValidatorDashboard /></Layout>} />
+                </Routes>
+              </ThemeProvider>
+            </AuthProvider>
+          </Router>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
   );
 }
 

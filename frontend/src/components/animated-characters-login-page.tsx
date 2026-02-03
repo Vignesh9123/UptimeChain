@@ -203,7 +203,7 @@ function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, ro
   const [role, setRole] = useState<string>(roleFromQuery ? roleFromQuery.toUpperCase() : UserRole.CLIENT.value);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [localError, setLocalError] = useState("");
-  const { login, register, isLoading, error: storeError, clearError } = useUserStore();
+  const { user, isAuthenticated, login, register, isLoading, error: storeError, clearError } = useUserStore();
   const [mouseX, setMouseX] = useState<number>(0);
   const [mouseY, setMouseY] = useState<number>(0);
   const [isPurpleBlinking, setIsPurpleBlinking] = useState(false);
@@ -215,6 +215,12 @@ function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, ro
   const blackRef = useRef<HTMLDivElement>(null);
   const yellowRef = useRef<HTMLDivElement>(null);
   const orangeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isAuthenticated && !isLoading && user) {
+      navigate(user.role.toLowerCase() === 'validator' ? '/validator' : '/client');
+    }
+  }, [isAuthenticated, isLoading, user]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -360,7 +366,7 @@ function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, ro
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Content Section */}
       <div className={`relative hidden lg:flex flex-col ${registerPage ? '' : 'justify-between'} bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-primary-foreground ${registerPage && 'lg:order-2'}`}>
-        
+
 
         <div className="relative z-20 flex items-end justify-center h-[500px]">
           {/* Cartoon Characters */}

@@ -1,6 +1,8 @@
 import { Router } from "express";
-import { registerValidator, stakeValidator } from "../controllers/validator.controller";
+import { getValidator, registerValidatorPubkey, stakeValidator } from "../controllers/validator.controller";
+import { authMiddleware } from "../middlewares";
 const router = Router()
-router.post('/register', registerValidator)
-router.post('/stake', stakeValidator)
+router.post('/register-pubkey',authMiddleware, registerValidatorPubkey)
+router.post('/stake',authMiddleware, stakeValidator)
+router.get('/get-validator',authMiddleware, getValidator)
 export {router as validatorRouter}

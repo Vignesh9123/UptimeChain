@@ -1,12 +1,39 @@
 import { prisma } from "@uptime-chain/database";
 import type {Request, Response} from "express";
 import * as z from "zod";
-import { connection, txParser, instructionCoder, PROGRAM_ID } from "../config";
+import { connection, txParser, instructionCoder, PROGRAM_ID, program , env} from "../config";
+import { Keypair } from "@solana/web3.js";
 
 const stakeValidatorSchema = z.object({
     signature: z.string().min(1),
 })
 
+const registerValidatorPubkeySchema = z.object({
+    pubkey: z.string().min(1),
+})
+const registerValidatorOnChain = async (validatorPubkey: string) => {
+    try {
+        if(!program.methods.initializeValidator){
+            return
+        }
+
+        const authority = Keypair.fromSecretKey(env.VALIDATOR_AUTHORITY_PRIVATE_KEY);
+        
+      const txn = await program.methods.initializeValidator()
+        .accounts({
+      authority: authority.publicKey,
+      validator: validatorPubkey,
+    payer: authority.publicKey
+
+    })
+    .signers([authority])
+    .rpc()
+    console.log("Initialize validator: ", txn)
+    } catch (error) {
+        console.log(error)
+        return
+    }
+}
 
 export async function verifyStake(txSig: string) {
     const parsed = await txParser.parseTransaction(connection, txSig);
@@ -39,7 +66,7 @@ export async function verifyStake(txSig: string) {
     return (decoded.data as any).amount.toNumber()
 }
 
-export const registerValidator = async (req: Request, res: Response) => {
+export const getValidator = async (req: Request, res: Response) => {
     try {
         const userId = req.user.id;
         const user = await prisma.user.findUnique({
@@ -51,18 +78,49 @@ export const registerValidator = async (req: Request, res: Response) => {
                 validator: true
             }
         })
+        console.log(user)
         if(!user) {
             return res.status(401).json({message: "Unauthorized"})
         }
-        if(user.validator) {
+        if(!user.validator) {
             return res.status(401).json({message: "Unauthorized"})
         }
-        const validator = await prisma.validator.create({
-            data: {
-                user_id: userId,
-                is_active: false
+        return res.status(200).json({message: "Validator found", data: user.validator})
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({message: "Internal server error"})
+    }
+}
+
+export const registerValidatorPubkey = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const user = await prisma.user.findUnique({
+            where: {
+                id: userId,
+                role:"VALIDATOR"
+            },
+            include: {
+                validator: true
             }
         })
+        console.log(user)
+        if(!user) {
+            return res.status(401).json({message: "Unauthorized"})
+        }
+        if(!user.validator) {
+            return res.status(401).json({message: "Unauthorized"})
+        }
+        const cleanedBody = registerValidatorPubkeySchema.parse(req.body);
+        const validator = await prisma.user.update({
+            where: {
+                id: userId
+            },
+            data: {
+                wallet_pubkey: cleanedBody.pubkey
+            }
+        })
+        await registerValidatorOnChain(cleanedBody.pubkey)
         return res.status(200).json({message: "Validator registered successfully", data: validator})
     } catch (error) {
         console.error(error)
@@ -124,7 +182,7 @@ export const stakeValidator = async (req: Request, res: Response) => {
                 }
             })
         }
-        return res.status(200).json({message: "Validator staked successfully"})
+        return res.status(200).json({message: "Validator staked successfully", amount: validator.stake_amount})
     } catch (error) {
         console.error(error)
         return res.status(500).json({message: "Internal server error"})

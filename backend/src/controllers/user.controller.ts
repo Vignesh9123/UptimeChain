@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 import { env } from "../config"
 import { UserRole } from "@uptime-chain/database/"
 
+
 const loginSchema = z.object({
     email: z
         .email(),
@@ -101,6 +102,13 @@ export const registerUser = async (req: Request, res: Response) => {
                 role: cleanedBody.role
             }
         })
+        if(cleanedBody.role === UserRole.VALIDATOR){
+            await prisma.validator.create({
+                data: {
+                    user_id: user.id
+                }
+            })
+        }
         user.password = null;
         return res.status(201).json({message: "User created", user})   
     }

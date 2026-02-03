@@ -1,8 +1,10 @@
 import express from 'express'
-import { env } from './config'
+import { env, program } from './config'
 import indexRouter from './routes'
 import cors from 'cors'
 import { prisma } from '@uptime-chain/database'
+import { Keypair } from '@solana/web3.js'
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes'
 const app = express()
 
 app.use(express.json())
@@ -16,6 +18,38 @@ app.get("/", (_, res) => {
     message: "Alrighty Let's start"
   })
 })
+
+app.post("/initialize-pre-accs", async (req, res) => { // TODO: This should not be a route eventually will change this to something else
+  try {
+    if(!program.methods.initializeStakePool){
+      throw new Error("Program methods not initialized")
+    }
+    if(!program.methods.initializeRewardVault){
+      throw new Error("Program methods not initialized")
+    }
+    const authority = Keypair.fromSecretKey(env.VALIDATOR_AUTHORITY_PRIVATE_KEY);
+    await program.methods.initializeStakePool()
+    .accounts({
+      authority: authority.publicKey
+    })
+    .signers([authority])
+    .rpc()
+    await program.methods.initializeRewardVault()
+    .accounts({
+      authority: authority.publicKey
+    })
+    .signers([authority])
+    .rpc()
+    res.status(200).json({
+      message: "Pre-accounts initialized successfully"
+    })
+  } catch (error) {
+    console.error("Failed to initialize pre-accounts", error)
+    res.status(500).json({
+      message: "Failed to initialize pre-accounts"
+    })
+  }
+}) 
 
 try {
   await prisma.$connect()
