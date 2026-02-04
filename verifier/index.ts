@@ -30,6 +30,7 @@ type ValidatorSubmission = {
         certificateExpiryTs: number;
     };
     submittedAt: number;
+    continent: string
   };
   
   type RoundKey = string; // `${targetUrl}:${roundTimestamp}`
@@ -133,7 +134,7 @@ type ValidatorSubmission = {
       submissions,
       uptimePercent,
       medianLatency,
-      status: submissions[0]?.data.status
+      status: submissions[0]?.data.status // TODO: Handle this
     };
     console.log("Report", report)
     const report_hash = await uploadToIpfs(report);
@@ -184,6 +185,7 @@ type ValidatorSubmission = {
       status: string,
     };
     submittedAt: number;
+    continent: string
     }} = req 
     const roundData:{
     validatorPubkey: string,
@@ -196,6 +198,7 @@ type ValidatorSubmission = {
       status: string,
     };
     submittedAt: number;
+    continent: string
     } = body
     onValidatorSubmit(roundData.data.targetUrl, roundData.data.roundTimestamp, roundData)
     res.status(200).json({message:"Round submitted successfully"})

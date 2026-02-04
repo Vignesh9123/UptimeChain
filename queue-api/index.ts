@@ -106,12 +106,20 @@ app.get("/api/fetch-task", async (req, res) => {
 app.post("/api/result-submit", async (req, res) => {
     try {
       const {body} = req
+      const validatorIp = req.ip?.endsWith("127.0.0.1") ? undefined : req.ip
+      console.log("Val", validatorIp)
+      const resp = await fetch(validatorIp ? `http://ip-api.com/json/${validatorIp}?fields=3207167` : `http://ip-api.com/json?fields=3207167`)
+      const data = await resp.json() as any
+      console.log("Validator IP", data)
+      const continent = data.continent
+      console.log("Continent", continent)
       const cleanedBody = resultSchema.parse(body)
       console.log("Result submitted successfully", cleanedBody)
       await client.setEx(`result:${cleanedBody.data.targetUrl + req.headers["x-public-key"]}`, 2 * 60, JSON.stringify(cleanedBody))
       const resultToSend = {
         ...cleanedBody,
         submittedAt: Date.now(),
+        continent
       }
       await fetch(`${VERIFIER_URL}/submit-round`, {
         method: "POST",
