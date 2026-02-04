@@ -75,8 +75,8 @@ type ValidatorSubmission = {
     });
   }
 
-  function onValidatorSubmit(
-    targetUrl: String,
+  async function onValidatorSubmit(
+    targetUrl: string,
     roundTimestamp: number,
     submission: ValidatorSubmission
   ) {
@@ -90,7 +90,31 @@ type ValidatorSubmission = {
     // if (round.submissions.has(submission.validatorPubkey)) return;
   
     if (!verifySignature(submission)) return;
-  
+    const user = await prisma.user.findUnique({
+      where: {
+        wallet_pubkey: submission.validatorPubkey
+      },
+      include: {
+        validator: true
+      }
+    });
+    const website = await prisma.website.findUnique({
+      where: {
+        url: targetUrl
+      },
+    });
+    if (!user) return;
+    if(!website) return;
+    const validator = user.validator;
+    if(!validator) return;
+    // if(validator.is_active === false) return; // TODO: Handle this
+    await submitValidatorSubmissionsOffChain({
+      validatorId: validator.id,
+      websiteId: website.id,
+      roundTimestamp,
+      status: submission.data.status,
+      responseTime: submission.data.latency,
+    })
     round.submissions.set(submission.validatorPubkey, submission);
   
     maybeFinalizeRound(round);
@@ -173,7 +197,7 @@ type ValidatorSubmission = {
     res.status(200).json({message:"Round started successfully"})
   })
 
-  app.post("/submit-round", (req, res)=>{
+  app.post("/submit-round", async(req, res)=>{
     const {body }: {body:{
     validatorPubkey: string,
     signature: string,
@@ -200,9 +224,34 @@ type ValidatorSubmission = {
     submittedAt: number;
     continent: string
     } = body
-    onValidatorSubmit(roundData.data.targetUrl, roundData.data.roundTimestamp, roundData)
+    await onValidatorSubmit(roundData.data.targetUrl, roundData.data.roundTimestamp, roundData)
     res.status(200).json({message:"Round submitted successfully"})
   })
+
+async function submitValidatorSubmissionsOffChain({
+    validatorId,
+    websiteId,
+    roundTimestamp,
+    status,
+    responseTime,
+  }: {
+    validatorId: string;
+    websiteId: string;
+    roundTimestamp: number;
+    status: string;
+    responseTime: number;
+  }) {
+    const validatorSubmission = await prisma.validatorSubmissions.create({
+      data: {
+        validatorId,
+        websiteId,
+        roundTimestamp: new Date(roundTimestamp),
+        status: status as CheckStatus,
+        responseTime,
+      },
+    });
+    console.log("Validator submission submitted to chain:", validatorSubmission);
+  }
   
 async function submitRoundOffChain({
     targetUrl,
@@ -230,7 +279,7 @@ async function submitRoundOffChain({
     const roundResult = await prisma.roundResult.create({
       data: {
         websiteId: website.id,
-        solana_address: "",
+        solana_address: "", // TODO: Add solana address
         uptime_percentage: uptimePercent,
         responseTime: medianLatency,
         roundTimestamp: new Date(roundTimestamp),
