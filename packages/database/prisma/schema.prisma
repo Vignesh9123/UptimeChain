@@ -24,7 +24,7 @@ model User {
   name String
   password String?
   role UserRole
-  wallet_pubkey String?
+  wallet_pubkey String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   subscriptions Subscription[]
@@ -37,6 +37,7 @@ model Website {
   subscriptions Subscription[]
   schedules WebsiteSchedule[]
   roundResults RoundResult[]
+  validatorSubmissions ValidatorSubmissions[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -90,4 +91,20 @@ model Validator {
     is_active Boolean @default(false)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    submissions ValidatorSubmissions[]
+}
+
+model ValidatorSubmissions{
+    id String @id @default(uuid())
+    validatorId String
+    validator Validator @relation(fields: [validatorId], references: [id], onDelete: Cascade)
+    websiteId String
+    website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+    roundTimestamp DateTime
+    status CheckStatus
+    responseTime Float
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique(fields:[validatorId, websiteId, roundTimestamp], name: "ValidatorSubmissions_Unique")
 }
