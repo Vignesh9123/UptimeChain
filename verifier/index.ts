@@ -114,6 +114,7 @@ type ValidatorSubmission = {
       roundTimestamp,
       status: submission.data.status,
       responseTime: submission.data.latency,
+      continent: submission.continent,
     })
     round.submissions.set(submission.validatorPubkey, submission);
   
@@ -234,12 +235,14 @@ async function submitValidatorSubmissionsOffChain({
     roundTimestamp,
     status,
     responseTime,
+    continent
   }: {
     validatorId: string;
     websiteId: string;
     roundTimestamp: number;
     status: string;
     responseTime: number;
+    continent: string;
   }) {
     const validatorSubmission = await prisma.validatorSubmissions.create({
       data: {
@@ -248,6 +251,7 @@ async function submitValidatorSubmissionsOffChain({
         roundTimestamp: new Date(roundTimestamp),
         status: status as CheckStatus,
         responseTime,
+        continent
       },
     });
     console.log("Validator submission submitted to chain:", validatorSubmission);

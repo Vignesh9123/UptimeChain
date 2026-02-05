@@ -101,6 +101,7 @@ model ValidatorSubmissions{
     websiteId String
     website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
     roundTimestamp DateTime
+    continent String
     status CheckStatus
     responseTime Float
     createdAt DateTime @default(now())
