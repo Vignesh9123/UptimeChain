@@ -37,7 +37,10 @@ const ValidatorDashboard = () => {
       if (wallet && user && user.role.toLowerCase() === 'validator') {
         try {
           const response = await axiosClient.get('/validators/get-validator');
-          setValidator(response.data.data);
+          setValidator({
+            ...response.data.data,
+            stake_amount: Number(response.data.data.stake_amount)
+          });
         } catch (error) {
           console.error("Failed to get validator", error);
         }
@@ -64,7 +67,6 @@ const ValidatorDashboard = () => {
       navigate('/login');
     }
   }, [isLoading, isAuthenticated]);
-  console.log("Validato", validator)
 
   const handleStake = async () => {
     if (!program || !wallet || !stakeAmount) return;
@@ -97,7 +99,7 @@ const ValidatorDashboard = () => {
       const res = await axiosClient.post('/validators/stake', { signature: tx });
       setValidator({
         ...validator,
-        stake_amount: res.data.amount
+        stake_amount: Number(res.data.amount)
       });
 
       setStakeAmount('');

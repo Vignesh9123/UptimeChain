@@ -85,7 +85,7 @@ export const getValidator = async (req: Request, res: Response) => {
         if(!user.validator) {
             return res.status(401).json({message: "Unauthorized"})
         }
-        return res.status(200).json({message: "Validator found", data: user.validator})
+        return res.status(200).json({message: "Validator found", data: {...user.validator, stake_amount: user.validator.stake_amount.toString()}})
     } catch (error) {
         console.error(error)
         return res.status(500).json({message: "Internal server error"})
@@ -182,7 +182,7 @@ export const stakeValidator = async (req: Request, res: Response) => {
                 }
             })
         }
-        return res.status(200).json({message: "Validator staked successfully", amount: validator.stake_amount})
+        return res.status(200).json({message: "Validator staked successfully", amount: validator.stake_amount.toString()})
     } catch (error) {
         console.error(error)
         return res.status(500).json({message: "Internal server error"})
