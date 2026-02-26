@@ -83,6 +83,7 @@ type ValidatorSubmission = {
     console.log("Received submission", submission)
     const key = roundKey(targetUrl, roundTimestamp);
     const round = rounds.get(key);
+    console.log("Round for submission", round)
     if (!round || round.finalized) return;
   
     // if (!round.expectedValidators.has(submission.validatorPubkey)) return;
@@ -103,9 +104,12 @@ type ValidatorSubmission = {
         url: targetUrl
       },
     });
+    console.log("User", user)
+    console.log("Website", website)
     if (!user) return;
     if(!website) return;
     const validator = user.validator;
+    console.log("Validator", validator)
     if(!validator) return;
     // if(validator.is_active === false) return; // TODO: Handle this
     await submitValidatorSubmissionsOffChain({
@@ -136,7 +140,7 @@ type ValidatorSubmission = {
   }
   async function finalizeRound(round: RoundCollector) {
     round.finalized = true;
-  
+    console.log("Finalizing round", round)
     const submissions = Array.from(round.submissions.values());
   
     const upCount = submissions.filter(s => s.data.latency).length;
@@ -304,6 +308,7 @@ async function verifySignature(submission: ValidatorSubmission){
         signatureBytesToVerify,
         publicKey
     );
+    console.log("Signature verified", isVerified)
     return isVerified
 }
 

@@ -58,7 +58,7 @@ export const addWebsite = async (req: Request, res: Response) => {
                 data: {
                     websiteId: website.id,
                     interval_seconds: cleanedBody.check_interval * 60,
-                    next_run: new Date(Date.now() + cleanedBody.check_interval * 60 * 1000),
+                    next_run: new Date(Date.now() + 5000),
                 }
             })
         }

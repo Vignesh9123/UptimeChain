@@ -67,10 +67,10 @@ async function main(){
     
         const dataToSign = {
             targetUrl,
-            roundTimestamp,
-            status,
             latency,
-            certificateExpiryTs: expiryTs
+            certificateExpiryTs: expiryTs,
+            roundTimestamp,
+            status
         }
         const secretKey = bs58.decode(PRIVATE_KEY);
         const message = JSON.stringify(dataToSign);
