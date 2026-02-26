@@ -67,6 +67,7 @@ const ClientDashboard = () => {
   }, [isLoading, isAuthenticated]);
 
   useEffect(()=>{
+    fetchLatestResults();
     const interval = setInterval(() => {
       fetchLatestResults();
     }, 5000);
@@ -81,14 +82,12 @@ const ClientDashboard = () => {
             <p className="text-muted-foreground">Overview of your monitored endpoints and system health.</p>
           </div>
 
-          {/* Mobile View: Link to separate page */}
           <Button size="lg" className="gap-2 md:hidden" asChild>
             <Link to="/client/add-website">
               <Plus className="h-4 w-4" /> Add Website
             </Link>
           </Button>
 
-          {/* Desktop View: Dialog */}
           <Dialog open={addWebsiteDialogOpen} onOpenChange={setAddWebsiteDialogOpen}>
             <DialogTrigger asChild>
               <Button size="lg" className="gap-2 hidden md:flex">
@@ -123,9 +122,9 @@ const ClientDashboard = () => {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Status Summary</CardTitle>
               <div className="flex gap-1">
-                <span className="flex items-center text-xs text-green-500"><CheckCircle className="h-3 w-3 mr-1" /> {websites.length ? websites.length - 1 : 0}</span>
-                <span className="flex items-center text-xs text-red-500"><XCircle className="h-3 w-3 mr-1" /> {websites.length ? 1 : 0}</span>
-                <span className="flex items-center text-xs text-yellow-500"><AlertTriangle className="h-3 w-3 mr-1" /> {websites.length ? 0 : 0}</span>
+                <span className="flex items-center text-xs text-green-500"><CheckCircle className="h-3 w-3 mr-1" /> {latestResults.filter((result) => result.status === 'UP').length}</span>
+                <span className="flex items-center text-xs text-red-500"><XCircle className="h-3 w-3 mr-1" /> {latestResults.filter((result) => result.status !== 'UP').length}</span>
+                <span className="flex items-center text-xs text-yellow-500"><AlertTriangle className="h-3 w-3 mr-1" /> {latestResults.filter((result) => result.status === 'UNKNOWN').length}</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -231,7 +230,7 @@ const ClientDashboard = () => {
                       const latency = latestResultOfWebsite?.responseTime;
 
                       return (
-                        <TableRow key={website.id}>
+                        <TableRow key={website.id} onClick={() => navigate(`/client/websites/${website.id}`)}>
                           <TableCell className="font-medium">{website.name}</TableCell>
                           <TableCell>
                             {isUp ? (

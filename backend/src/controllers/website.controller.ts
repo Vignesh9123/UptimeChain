@@ -19,7 +19,7 @@ export const addWebsite = async (req: Request, res: Response) => {
                 url: cleanedBody.url,
             }
         })
-        if(!existingWebsite) {
+        if (!existingWebsite) {
             website = await prisma.website.create({
                 data: {
                     url: cleanedBody.url,
@@ -35,8 +35,8 @@ export const addWebsite = async (req: Request, res: Response) => {
                 websiteId: website.id,
             }
         })
-        if(existingUserSubscription) {
-            return res.status(400).json({message: "Website already added to user"})
+        if (existingUserSubscription) {
+            return res.status(400).json({ message: "Website already added to user" })
         }
         const userSubscription = await prisma.subscription.create({
             data: {
@@ -53,7 +53,7 @@ export const addWebsite = async (req: Request, res: Response) => {
                 websiteId: website.id,
             }
         })
-        if(!existingSchedule) {
+        if (!existingSchedule) {
             await prisma.websiteSchedule.create({
                 data: {
                     websiteId: website.id,
@@ -63,7 +63,7 @@ export const addWebsite = async (req: Request, res: Response) => {
             })
         }
         else {
-            if(cleanedBody.check_interval < existingSchedule.interval_seconds) {
+            if (cleanedBody.check_interval < existingSchedule.interval_seconds) {
                 await prisma.websiteSchedule.update({
                     where: {
                         id: existingSchedule.id,
@@ -75,9 +75,9 @@ export const addWebsite = async (req: Request, res: Response) => {
                 })
             }
         }
-        return res.status(201).json({message: "Website added to user", data: userSubscription})
+        return res.status(201).json({ message: "Website added to user", data: userSubscription })
     } catch (error) {
-        return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
     }
 }
 
@@ -88,12 +88,15 @@ export const getUserWebsites = async (req: Request, res: Response) => {
             where: {
                 userId: req.user.id,
             },
+            include: {
+                website: true,
+            },
             take: Number(take),
             skip: Number(skip),
         })
-        return res.status(200).json({message: "User websites fetched", data: userWebsites})
+        return res.status(200).json({ message: "User websites fetched", data: userWebsites })
     } catch (error) {
-        return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
     }
 }
 
@@ -104,13 +107,16 @@ export const getUserWebsite = async (req: Request, res: Response) => {
             where: {
                 id: userWebsiteId,
                 userId: req.user.id
+            },
+            include: {
+                website: true,
             }
         })
-        if(!userWebsite) {
-            return res.status(404).json({message: "User website not found"})
+        if (!userWebsite) {
+            return res.status(404).json({ message: "User website not found" })
         }
-        return res.status(200).json({message: "User website fetched", data: userWebsite})
+        return res.status(200).json({ message: "User website fetched", data: userWebsite })
     } catch (error) {
-        return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
     }
 }

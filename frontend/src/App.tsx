@@ -4,6 +4,8 @@ import LandingPage from './pages/LandingPage';
 import ClientDashboard from './pages/ClientDashboard';
 import AddWebsitePage from './pages/AddWebsitePage';
 import ValidatorDashboard from './pages/ValidatorDashboard';
+import WebsitesListPage from './pages/WebsitesListPage';
+import WebsiteDetailPage from './pages/WebsiteDetailPage';
 import Login from './pages/LoginPage';
 import Register from './pages/RegisterPage';
 import { AuthProvider } from './components/AuthProvider';
@@ -31,6 +33,8 @@ function App() {
                   <Route path="/register" element={<Layout><Register /></Layout>} />
                   <Route path="/client" element={<Layout><ClientDashboard /></Layout>} />
                   <Route path="/client/add-website" element={<Layout><AddWebsitePage /></Layout>} />
+                  <Route path="/client/websites" element={<Layout><WebsitesListPage /></Layout>} />
+                  <Route path="/client/websites/:websiteId" element={<Layout><WebsiteDetailPage /></Layout>} />
                   <Route path="/validator" element={<Layout><ValidatorDashboard /></Layout>} />
                 </Routes>
               </ThemeProvider>
