@@ -51,7 +51,7 @@ async function checkWebsiteAndPushToQueue(){
             roundTimestamp: now,
             activeValidators
         })
-        const new_next_run = new Date(now + subscription.interval_seconds * 1000)
+        const new_next_run = new Date(now + subscription.interval_seconds * 100)
         await prisma.websiteSchedule.update({
             where: {
                 id: subscription.id
@@ -63,4 +63,4 @@ async function checkWebsiteAndPushToQueue(){
     }
 }
 checkWebsiteAndPushToQueue()
-setInterval(checkWebsiteAndPushToQueue, 20 * 1000)
+setInterval(checkWebsiteAndPushToQueue, 10 * 1000)

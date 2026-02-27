@@ -56,7 +56,7 @@ app.post("/api/push-task", async (req, res)=>{
 app.get("/api/fetch-task", async (req, res) => {
     try {
       const now = Date.now()
-      const TWO_MINUTES = 2 * 60 * 1000
+      const TWO_MINUTES = 20 * 1000
       let index = 0;
       while (true) {
         const taskStr = await client.lIndex("task-queue", index)
@@ -115,7 +115,7 @@ app.post("/api/result-submit", async (req, res) => {
       console.log("Continent", continent)
       const cleanedBody = resultSchema.parse(body)
       console.log("Result submitted successfully", cleanedBody)
-      await client.setEx(`result:${cleanedBody.data.targetUrl + req.headers["x-public-key"]}`, 2 * 60, JSON.stringify(cleanedBody))
+      await client.setEx(`result:${cleanedBody.data.targetUrl + req.headers["x-public-key"]}`, 20, JSON.stringify(cleanedBody))
       const resultToSend = {
         ...cleanedBody,
         submittedAt: Date.now(),

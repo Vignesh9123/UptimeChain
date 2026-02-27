@@ -91,4 +91,4 @@ async function main(){
     }
 }
 main()
-setInterval(main, 20 * 1000)
+setInterval(main, 5 * 1000)

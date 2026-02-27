@@ -10,7 +10,7 @@ import { PublicKey } from '@solana/web3.js';
 
 const app = express();
 app.use(express.json())
-const ROUND_TIMEOUT_MS = 120_000;
+const ROUND_TIMEOUT_MS = 15_000;
 const MIN_QUORUM_RATIO = 2 / 3;
 const MIN_VALIDATORS = 3;
 
