@@ -54,3 +54,20 @@ export const getWebsiteResults = async (websiteId: string) => {
     const response = await axiosClient.get<{ data: RoundResult[] }>(`/ping/${websiteId}`);
     return response.data.data;
 }
+
+export interface ValidatorSubmission {
+    id: string;
+    validatorId: string;
+    websiteId: string;
+    roundTimestamp: string;
+    continent: string;
+    status: string;
+    responseTime: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export const getWebsiteSubmissions = async (websiteId: string) => {
+    const response = await axiosClient.get<{ data: ValidatorSubmission[] }>(`/ping/${websiteId}/submissions`);
+    return response.data.data;
+}

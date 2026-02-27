@@ -16,15 +16,37 @@ import {
     ExternalLink,
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
-import { getWebsiteById, getWebsiteResults, type UserWebsite, type RoundResult } from '@/services/website.service';
+import { getWebsiteById, getWebsiteResults, getWebsiteSubmissions, type UserWebsite, type RoundResult, type ValidatorSubmission } from '@/services/website.service';
+
+const CONTINENT_LABELS: Record<string, string> = {
+    'NA': 'North America',
+    'EU': 'Europe',
+    'AS': 'Asia',
+    'SA': 'South America',
+    'AF': 'Africa',
+    'OC': 'Oceania',
+    'AN': 'Antarctica',
+};
+
+const CONTINENT_COLORS: Record<string, string> = {
+    'NA': '#6366f1',
+    'EU': '#8b5cf6',
+    'AS': '#ec4899',
+    'SA': '#f59e0b',
+    'AF': '#10b981',
+    'OC': '#06b6d4',
+    'AN': '#64748b',
+};
 
 const WebsiteDetailPage = () => {
     const { websiteId } = useParams<{ websiteId: string }>();
     const [website, setWebsite] = useState<UserWebsite | null>(null);
     const [rounds, setRounds] = useState<RoundResult[]>([]);
+    const [submissions, setSubmissions] = useState<ValidatorSubmission[]>([]);
+    const [expandedRound, setExpandedRound] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { isAuthenticated, isLoading: authLoading } = useUserStore();
     const navigate = useNavigate();
@@ -40,8 +62,12 @@ const WebsiteDetailPage = () => {
             if (!websiteId) return;
             const sub = await getWebsiteById(websiteId);
             setWebsite(sub);
-            const results = await getWebsiteResults(sub.websiteId);
+            const [results, subs] = await Promise.all([
+                getWebsiteResults(sub.websiteId),
+                getWebsiteSubmissions(sub.websiteId),
+            ]);
             setRounds(results);
+            setSubmissions(subs);
         } catch (err) {
             console.error('Failed to fetch website data:', err);
         } finally {
@@ -125,6 +151,34 @@ const WebsiteDetailPage = () => {
         if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
         return `${Math.round(seconds / 3600)}h`;
     };
+
+    const continentMap = new Map<string, ValidatorSubmission[]>();
+    submissions.forEach((s) => {
+        const key = s.continent || 'Unknown';
+        if (!continentMap.has(key)) continentMap.set(key, []);
+        continentMap.get(key)!.push(s);
+    });
+
+    const continentStats = Array.from(continentMap.entries()).map(([continent, subs]) => {
+        const upSubs = subs.filter((s) => s.status === 'UP');
+        const avgRt = upSubs.length > 0 ? upSubs.reduce((a, s) => a + s.responseTime, 0) / upSubs.length : 0;
+        return {
+            continent,
+            label: CONTINENT_LABELS[continent] || continent,
+            color: CONTINENT_COLORS[continent] || '#64748b',
+            totalChecks: subs.length,
+            upChecks: upSubs.length,
+            uptimePercent: subs.length > 0 ? ((upSubs.length / subs.length) * 100).toFixed(1) : '--',
+            avgResponseTime: Math.round(avgRt),
+        };
+    });
+
+    const submissionsByRound = new Map<string, ValidatorSubmission[]>();
+    submissions.forEach((s) => {
+        const key = s.roundTimestamp;
+        if (!submissionsByRound.has(key)) submissionsByRound.set(key, []);
+        submissionsByRound.get(key)!.push(s);
+    });
 
     return (
         <div className="space-y-6">
@@ -321,16 +375,69 @@ const WebsiteDetailPage = () => {
                 </Card>
             )}
 
+            {continentStats.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Globe className="h-5 w-5" />
+                            Continent Performance
+                        </CardTitle>
+                        <CardDescription>Aggregated validator results grouped by region.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {continentStats.map((cs) => (
+                                <div
+                                    key={cs.continent}
+                                    className="rounded-lg border p-4 space-y-3 transition-colors hover:bg-muted/50"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className="h-2.5 w-2.5 rounded-full"
+                                                style={{ backgroundColor: cs.color }}
+                                            />
+                                            <span className="font-medium text-sm">{cs.label}</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">{cs.totalChecks} checks</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div>
+                                            <span className="text-muted-foreground">Uptime</span>
+                                            <p className="text-lg font-bold">{cs.uptimePercent}%</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-muted-foreground">Avg Latency</span>
+                                            <p className="text-lg font-bold">{cs.avgResponseTime}ms</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full transition-all duration-500"
+                                            style={{
+                                                width: `${cs.uptimePercent === '--' ? 0 : cs.uptimePercent}%`,
+                                                backgroundColor: cs.color,
+                                                opacity: 0.8,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle>Round Details</CardTitle>
-                    <CardDescription>Recent monitoring round results with detailed timestamps.</CardDescription>
+                    <CardDescription>Click a row to see continent-wise validator submissions for that round.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {rounds.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">No rounds recorded yet.</p>
                     ) : (
-                        <div className="max-h-[400px] overflow-auto">
+                        <div className="max-h-[500px] overflow-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -338,35 +445,93 @@ const WebsiteDetailPage = () => {
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Response Time</TableHead>
                                         <TableHead className="text-right">Uptime %</TableHead>
+                                        <TableHead className="text-right">Validators</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {rounds.slice(0, 50).map((round) => (
-                                        <TableRow key={round.id}>
-                                            <TableCell className="font-mono text-sm">
-                                                {new Date(round.roundTimestamp).toLocaleString()}
-                                            </TableCell>
-                                            <TableCell>
-                                                {round.status === 'UP' ? (
-                                                    <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 gap-1">
-                                                        <CheckCircle className="h-3 w-3" /> Up
-                                                    </Badge>
-                                                ) : round.status === 'DOWN' ? (
-                                                    <Badge className="bg-red-500/15 text-red-600 border-red-500/30 gap-1">
-                                                        <XCircle className="h-3 w-3" /> Down
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30 gap-1">
-                                                        <HelpCircle className="h-3 w-3" /> Unknown
-                                                    </Badge>
+                                    {rounds.slice(0, 50).map((round) => {
+                                        const roundSubs = submissionsByRound.get(round.roundTimestamp) || [];
+                                        const isExpanded = expandedRound === round.roundTimestamp;
+
+                                        return (
+                                            <Fragment key={round.id}>
+                                                <TableRow
+                                                    key={round.id}
+                                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                                    onClick={() => setExpandedRound(isExpanded ? null : round.roundTimestamp)}
+                                                >
+                                                    <TableCell className="font-mono text-sm">
+                                                        {new Date(round.roundTimestamp).toLocaleString()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {round.status === 'UP' ? (
+                                                            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 gap-1">
+                                                                <CheckCircle className="h-3 w-3" /> Up
+                                                            </Badge>
+                                                        ) : round.status === 'DOWN' ? (
+                                                            <Badge className="bg-red-500/15 text-red-600 border-red-500/30 gap-1">
+                                                                <XCircle className="h-3 w-3" /> Down
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30 gap-1">
+                                                                <HelpCircle className="h-3 w-3" /> Unknown
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">
+                                                        {round.status === 'UP' ? `${Math.round(round.responseTime)}ms` : '—'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">{(round.uptime_percentage / 100).toFixed(2)}%</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Badge variant="outline" className="font-mono text-xs">
+                                                            {roundSubs.length}
+                                                        </Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                                {isExpanded && roundSubs.length > 0 && (
+                                                    <TableRow key={`${round.id}-detail`}>
+                                                        <TableCell colSpan={5} className="p-0">
+                                                            <div className="bg-muted/30 px-6 py-4 space-y-2">
+                                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                                                                    Validator Submissions ({roundSubs.length})
+                                                                </p>
+                                                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                                                    {roundSubs.map((sub) => (
+                                                                        <div
+                                                                            key={sub.id}
+                                                                            className="flex items-center justify-between rounded-md border bg-background px-3 py-2"
+                                                                        >
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div
+                                                                                    className="h-2 w-2 rounded-full"
+                                                                                    style={{ backgroundColor: CONTINENT_COLORS[sub.continent] || '#64748b' }}
+                                                                                />
+                                                                                <span className="text-sm font-medium">
+                                                                                    {CONTINENT_LABELS[sub.continent] || sub.continent}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                {sub.status === 'UP' ? (
+                                                                                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                                                                ) : sub.status === 'DOWN' ? (
+                                                                                    <XCircle className="h-3.5 w-3.5 text-red-500" />
+                                                                                ) : (
+                                                                                    <HelpCircle className="h-3.5 w-3.5 text-amber-500" />
+                                                                                )}
+                                                                                <span className="text-xs font-mono text-muted-foreground">
+                                                                                    {sub.status === 'UP' ? `${Math.round(sub.responseTime)}ms` : '—'}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
                                                 )}
-                                            </TableCell>
-                                            <TableCell className="text-right font-medium">
-                                                {round.status === 'UP' ? `${Math.round(round.responseTime)}ms` : '—'}
-                                            </TableCell>
-                                            <TableCell className="text-right">{(round.uptime_percentage / 100).toFixed(2)}%</TableCell>
-                                        </TableRow>
-                                    ))}
+                                            </Fragment>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
