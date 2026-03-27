@@ -106,7 +106,7 @@ app.get("/api/fetch-task", async (req, res) => {
 app.post("/api/result-submit", async (req, res) => {
     try {
       const {body} = req
-      const validatorIp = req.ip?.endsWith("127.0.0.1") ? undefined : req.ip
+      const validatorIp = req.ip?.endsWith("127.0.0.1") || req.ip?.endsWith("::1") ? undefined : req.ip
       console.log("Val", validatorIp)
       const resp = await fetch(validatorIp ? `http://ip-api.com/json/${validatorIp}?fields=3207167` : `http://ip-api.com/json?fields=3207167`)
       const data = await resp.json() as any
@@ -135,6 +135,7 @@ app.post("/api/result-submit", async (req, res) => {
       })
     }
     catch(e){
+      console.log("Error in result-submit", e)
       return res
       .status(500)
       .json({
