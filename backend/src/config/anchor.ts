@@ -6,7 +6,7 @@ import { SolanaParser } from "@shyft.to/solana-transaction-parser";
 import { env } from ".";
 import { BorshInstructionCoder } from "@coral-xyz/anchor";
 
-const authority = Keypair.fromSecretKey(env.VALIDATOR_AUTHORITY_PRIVATE_KEY);
+export const authority = Keypair.fromSecretKey(env.VALIDATOR_AUTHORITY_PRIVATE_KEY);
 const wallet = new Wallet(authority)
 
 export const connection = new Connection(env.RPC_URL, "confirmed");

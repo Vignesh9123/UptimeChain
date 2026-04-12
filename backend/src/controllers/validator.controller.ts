@@ -1,8 +1,7 @@
 import { prisma } from "@uptime-chain/database";
 import type {Request, Response} from "express";
 import * as z from "zod";
-import { connection, txParser, instructionCoder, PROGRAM_ID, program , env} from "../config";
-import { Keypair } from "@solana/web3.js";
+import { connection, txParser, instructionCoder, PROGRAM_ID, program , authority} from "../config";
 
 const stakeValidatorSchema = z.object({
     signature: z.string().min(1),
@@ -17,18 +16,15 @@ const registerValidatorOnChain = async (validatorPubkey: string) => {
             return
         }
 
-        const authority = Keypair.fromSecretKey(env.VALIDATOR_AUTHORITY_PRIVATE_KEY);
-        
-      const txn = await program.methods.initializeValidator()
-        .accounts({
-      authority: authority.publicKey,
-      validator: validatorPubkey,
-    payer: authority.publicKey
-
-    })
-    .signers([authority])
-    .rpc()
-    console.log("Initialize validator: ", txn)
+        const txn = await program.methods.initializeValidator()
+            .accounts({
+                authority: authority.publicKey,
+                validator: validatorPubkey,
+                payer: authority.publicKey
+            })
+            .signers([authority])
+            .rpc()
+        console.log("Initialize validator: ", txn)
     } catch (error) {
         console.log(error)
         return

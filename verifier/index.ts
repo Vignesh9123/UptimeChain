@@ -7,6 +7,10 @@ import bs58 from 'bs58';
 import { PinataSDK } from "pinata";
 import { decodeUTF8 } from 'tweetnacl-util';
 import { PublicKey } from '@solana/web3.js';
+import { createHash } from "crypto";
+import { program, authority } from './anchor';
+import { BN } from '@coral-xyz/anchor';
+import { web3 } from '@coral-xyz/anchor';
 
 const app = express();
 app.use(express.json())
@@ -166,22 +170,26 @@ type ValidatorSubmission = {
       status: submissions[0]?.data.status // TODO: Handle this
     };
     console.log("Report", report)
-    const report_hash = await uploadToIpfs(report);
+    const report_hash = await uploadToIpfs(report); // TODO: maybe report hash should be hash of report json not CID
     console.log("Report Hash", report_hash)
+    const roundPDA = await submitRoundOnChain({
+      targetUrl: round.targetUrl as string,
+      roundTimestamp: round.roundTimestamp,
+      uptimePercent,
+      medianLatency: medianLatency!,
+      report_hash,
+      submissions
+    })
     await submitRoundOffChain({
       targetUrl: round.targetUrl as string,
       roundTimestamp: round.roundTimestamp,
       uptimePercent,
       medianLatency: medianLatency!,
       report_hash,
-      status: submissions[0]?.data.status!
+      status: submissions[0]?.data.status!,
+      roundPDA
     });
     console.log("Submitted on chain")
-    const website = await prisma.website.findUnique({
-      where:{
-        url:round.targetUrl as string
-      }
-    })
     rounds.delete(roundKey(round.targetUrl, round.roundTimestamp));
   }    
 
@@ -267,14 +275,16 @@ async function submitRoundOffChain({
     uptimePercent,
     medianLatency,
     report_hash,
-    status
+    status,
+    roundPDA
   }: {
     targetUrl: string;
     roundTimestamp: number;
     uptimePercent: number;
     medianLatency: number;
     report_hash: string;
-    status: string
+    status: string;
+    roundPDA: string;
   }) {
     const website = await prisma.website.findUnique({
       where: {
@@ -287,7 +297,7 @@ async function submitRoundOffChain({
     const roundResult = await prisma.roundResult.create({
       data: {
         websiteId: website.id,
-        solana_address: "", // TODO: Add solana address
+        solana_address: roundPDA, // TODO: Add solana address
         uptime_percentage: uptimePercent,
         responseTime: medianLatency,
         roundTimestamp: new Date(roundTimestamp),
@@ -296,6 +306,69 @@ async function submitRoundOffChain({
       },
     });
     console.log("Round submitted to chain:", roundResult);
+}
+
+async function submitRoundOnChain({
+  targetUrl,
+  roundTimestamp,
+  uptimePercent,
+  medianLatency,
+  report_hash,
+  submissions
+}: {
+  targetUrl: string;
+  roundTimestamp: number;
+  uptimePercent: number;
+  medianLatency: number;
+  report_hash: string;
+  submissions: ValidatorSubmission[];
+}){
+  const website = await prisma.website.findUnique({
+    where: {
+      url: targetUrl,
+    },
+  });
+  if (!website) {
+    throw new Error(`Website not found for URL: ${targetUrl}`);
+  }
+  const bytes = Buffer.from(targetUrl, "utf8");
+  const target_id = Array.from(
+    createHash("sha256").update(bytes).digest()
+  );
+  const round_timestamp = new BN(Math.floor(roundTimestamp / 1000));
+  const reward_per_validator = new BN(0.001 * web3.LAMPORTS_PER_SOL)
+  const validators = submissions.map((submission) => {
+    return {
+      pubkey: new PublicKey(submission.validatorPubkey),
+      isWritable: true,
+      isSigner: false
+    }
+  })
+  const txn = await program?.methods
+    ?.submitRound?.(
+      target_id,
+      round_timestamp,
+      uptimePercent,
+      medianLatency,
+      report_hash,
+      reward_per_validator
+    )
+    .accounts({
+      verifier: authority.publicKey,
+    })
+    .signers([authority])
+    .remainingAccounts(validators)
+    .rpc();
+
+  console.log("Round submitted to with transaction hash:", txn);
+  const roundSeeds = [
+      Buffer.from("round"),
+      Uint8Array.from(target_id),
+      round_timestamp.toArrayLike(Buffer, "le", 8)
+    ];
+  const [roundPDA] = PublicKey.findProgramAddressSync(roundSeeds, program.programId)
+  console.log("Round PDA", roundPDA.toBase58())
+  return roundPDA.toBase58()
 }
 
 async function verifySignature(submission: ValidatorSubmission){
