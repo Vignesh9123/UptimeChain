@@ -5,7 +5,7 @@ import { decodeUTF8 } from "tweetnacl-util"
 import nacl from "tweetnacl"
 import { config } from "dotenv"
 config()
-const QUEUE_API = 'https://db08-2406-7400-9a-2610-bd9a-4535-9a2b-4543.ngrok-free.app/api' // TODO: This will change from ngrok to domain when we deploy queue api
+const QUEUE_API = 'http://localhost:3000/api' // TODO: This will change from ngrok to domain when we deploy queue api
 const PRIVATE_KEY = process.env.PRIVATE_KEY
 const PUBLIC_KEY = process.env.PUBLIC_KEY
 

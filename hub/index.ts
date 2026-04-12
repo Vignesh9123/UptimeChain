@@ -1,5 +1,5 @@
 import { prisma } from "@uptime-chain/database";
-const QUEUE_API = 'https://db08-2406-7400-9a-2610-bd9a-4535-9a2b-4543.ngrok-free.app/api' // TODO: This will change from ngrok to domain when we deploy queue api
+const QUEUE_API = 'http://localhost:3000/api' // TODO: This will change from ngrok to domain when we deploy queue api
 const VERIFIER_API = 'http://localhost:8080'
 import axios from "axios";
 const queueAxios = axios.create({
