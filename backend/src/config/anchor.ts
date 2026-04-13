@@ -11,7 +11,7 @@ const wallet = new Wallet(authority)
 
 export const connection = new Connection(env.RPC_URL, "confirmed");
 export const PROGRAM_ID = new PublicKey(idl.address);
-const provider = new AnchorProvider(connection, wallet);
+export const provider = new AnchorProvider(connection, wallet);
 
 export const program = new Program(idl as Contract,provider);
 

@@ -64,7 +64,7 @@ pub mod contract {
         let now = Clock::get()?.unix_timestamp;
 
         require!(
-            (round_timestamp - now).abs() <= 120,
+            (round_timestamp - now).abs() <= 180,
             ErrorCode::InvalidRoundTimestamp
         );
 

@@ -1,10 +1,10 @@
 import express from 'express'
-import { env, program } from './config'
+import { env, program, provider } from './config'
 import indexRouter from './routes'
 import cors from 'cors'
 import { prisma } from '@uptime-chain/database'
-import { Keypair } from '@solana/web3.js'
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes'
+import { Keypair, PublicKey } from '@solana/web3.js'
+import { web3 } from '@coral-xyz/anchor'
 const app = express()
 
 app.use(express.json())
@@ -40,6 +40,13 @@ app.post("/initialize-pre-accs", async (req, res) => { // TODO: This should not 
     })
     .signers([authority])
     .rpc()
+    const rewardSeeds = [
+      Buffer.from("reward_vault")
+    ]
+    const [rewardPDA] = PublicKey.findProgramAddressSync(rewardSeeds, program.programId)
+    const airdropTxn3 = await provider.connection.requestAirdrop(rewardPDA,1 * web3.LAMPORTS_PER_SOL) // TODO: Move this somewhere else
+    await provider.connection.confirmTransaction(airdropTxn3)
+    console.log("Reward PDA: ", rewardPDA.toBase58())
     res.status(200).json({
       message: "Pre-accounts initialized successfully"
     })

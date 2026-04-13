@@ -335,6 +335,13 @@ async function submitRoundOnChain({
   const target_id = Array.from(
     createHash("sha256").update(bytes).digest()
   );
+  const txn1 = await program?.methods?.initializeTarget?.(target_id)
+    .accounts({
+      authority: authority.publicKey
+    })
+    .signers([authority])
+    .rpc() // TODO: Better to move this to place when we add unique website to our database
+    console.log("Initialize target transaction: ", txn1);
   const round_timestamp = new BN(Math.floor(roundTimestamp / 1000));
   const reward_per_validator = new BN(0.001 * web3.LAMPORTS_PER_SOL)
   const validators = submissions.map((submission) => {
@@ -344,13 +351,24 @@ async function submitRoundOnChain({
       isSigner: false
     }
   })
+  const report_hash_bytes = Array.from(
+    createHash("sha256").update(Buffer.from(report_hash)).digest()
+  )
+  console.log("Args for submit round", {
+    target_id,
+    round_timestamp,
+    uptimePercent,
+    medianLatency,
+    report_hash_bytes,
+    reward_per_validator
+  })
   const txn = await program?.methods
     ?.submitRound?.(
       target_id,
       round_timestamp,
       uptimePercent,
       medianLatency,
-      report_hash,
+      report_hash_bytes,
       reward_per_validator
     )
     .accounts({
