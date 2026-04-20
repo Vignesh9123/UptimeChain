@@ -3,7 +3,6 @@ use anchor_lang::system_program::{Transfer, transfer};
 
 declare_id!("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeAH");
 
-pub const MAX_ROUNDS: usize = 16;
 pub const PROGRAM_AUTHORITY: Pubkey = Pubkey::from_str_const("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeA5"); //TODO: Think abt this
 #[program]
 pub mod contract {
