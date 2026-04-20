@@ -30,7 +30,7 @@ export const addWebsite = async (req: Request, res: Response) => {
                 authority: authority.publicKey
                 })
                 .signers([authority])
-                .rpc() // TODO: Better to move this to place when we add unique website to our database
+                .rpc()
             console.log("Initialize target transaction: ", txn1);
             website = await prisma.website.create({
                 data: {
