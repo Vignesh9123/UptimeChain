@@ -4,7 +4,6 @@ use anchor_lang::system_program::{Transfer, transfer};
 declare_id!("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeAH");
 
 pub const MAX_ROUNDS: usize = 16;
-pub const EXPECTED_VERIFIER_PUBKEY: Pubkey = Pubkey::from_str_const("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeA4"); //TODO: Think abt this
 pub const PROGRAM_AUTHORITY: Pubkey = Pubkey::from_str_const("3tezpLbcXZEZmiRjMMWfb2zSgnR39DpsCK8MC2BkFeA5"); //TODO: Think abt this
 #[program]
 pub mod contract {
@@ -254,7 +253,7 @@ pub struct SubmitRound<'info>{
 
     #[account(
         mut,
-        // constraint = verifier.key() == EXPECTED_VERIFIER_PUBKEY
+        // constraint = verifier.key() == PROGRAM_AUTHORITY @ ErrorCode::Unauthorized
     )]
     pub verifier: Signer<'info>,
     pub system_program: Program<'info, System>
