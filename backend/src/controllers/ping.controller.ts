@@ -77,9 +77,18 @@ export const getWebsiteResults = async (req: Request, res: Response) => {
                 createdAt: 'desc'
             }
         })
-        // TODO: Should add filter logic as per subscription check interval
+        const filteredResults = results.filter((result) => {
+            const checkInterval = subscription.check_interval
+            const roundTimestamp = result.roundTimestamp
+            const tolerance = 60000; // a min of tolerance is fine since the interval cannot be less than 5 min
+            const intervalMs = checkInterval * 1000;
+            const offset = subscription.createdAt.getTime();
+            const mod = (roundTimestamp.getTime() - offset) % intervalMs;
+            const diff = Math.min(mod, intervalMs - mod);
+            return diff <= tolerance;
+        })
         return res.status(200).json({
-            data:results
+            data:filteredResults
         })
     } catch (error) {
         return res.status(500).json({
