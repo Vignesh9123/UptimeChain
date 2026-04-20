@@ -109,7 +109,7 @@ const ClientDashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overall Uptime</CardTitle>
+              <CardTitle className="text-sm font-medium">Overall Uptime</CardTitle>  {/*TODO: remove dummy data */}
               <Activity className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
@@ -168,7 +168,7 @@ const ClientDashboard = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Global Latency</CardTitle>
+              <CardTitle className="text-sm font-medium">Global Latency</CardTitle> {/*TODO: remove dummy data */}
               <Clock className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
@@ -181,7 +181,7 @@ const ClientDashboard = () => {
         <div className="grid gap-4 md:grid-cols-7">
           <Card className="col-span-4">
             <CardHeader>
-              <CardTitle>Uptime History (Last 7 Days)</CardTitle>
+              <CardTitle>Uptime History (Last 7 Days)</CardTitle>  {/*TODO: remove dummy data */}
             </CardHeader>
             <CardContent className="pl-2">
               <div className="h-[200px] w-full">
@@ -227,6 +227,7 @@ const ClientDashboard = () => {
                       const latestResultOfWebsite = latestResults.find((result) => result.websiteId === website.websiteId)
                       console.log(latestResultOfWebsite)
                       const isUp = latestResultOfWebsite?.status === 'UP';
+                      const isUnknown = !latestResultOfWebsite || latestResultOfWebsite?.status === 'UNKNOWN';
                       const latency = latestResultOfWebsite?.responseTime;
 
                       return (
@@ -235,6 +236,9 @@ const ClientDashboard = () => {
                           <TableCell>
                             {isUp ? (
                               <Badge className="bg-green-500 hover:bg-green-600">Operational</Badge>
+                            ) : 
+                            isUnknown ? (
+                              <Badge className="bg-amber-500 hover:bg-amber-600">Unknown</Badge>
                             ) : (
                               <Badge variant="destructive">Downtime</Badge>
                             )}

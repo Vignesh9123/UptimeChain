@@ -56,7 +56,7 @@ pub mod contract {
         round_timestamp: i64,
         uptime_percent: u16,
         median_latency_ms: u32,
-        report_hash: [u8; 16],
+        report_hash: [u8; 32],
         reward_per_validator: u64,
     ) -> Result<()> { // TODO: Add validator stake check
         let now = Clock::get()?.unix_timestamp;
@@ -300,7 +300,7 @@ pub struct RoundSummaryAccount {
     pub round_timestamp: i64,
     pub uptime_percent: u16,
     pub median_latency_ms: u32,
-    pub report_hash: [u8; 16],
+    pub report_hash: [u8; 32],
     pub bump: u8
 }
 

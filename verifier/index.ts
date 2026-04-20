@@ -146,6 +146,10 @@ type ValidatorSubmission = {
     round.finalized = true;
     console.log("Finalizing round", round)
     const submissions = Array.from(round.submissions.values());
+    if(!submissions){
+      console.log("No submissions found for round", round)
+      return;
+    }
   
     const upCount = submissions.filter(s => s.data.latency).length;
     const uptimePercent = Math.round(
