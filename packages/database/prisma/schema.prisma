@@ -77,7 +77,7 @@ model RoundResult {
   roundTimestamp DateTime
   status CheckStatus
   responseTime Float
-  report_hash String
+  report_hash Bytes
   solana_address String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -17,7 +17,8 @@ const client = await createClient({
   .connect();
 const taskSchema = z.object({
     targetUrl: z.url(),
-    roundTimestamp: z.number().int().min(0).optional() // TODO: Remove optional afterwards
+    roundTimestamp: z.number().int().min(0)
+    
 })
 
 const resultSchema = z.object({

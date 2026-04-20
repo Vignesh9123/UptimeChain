@@ -90,9 +90,9 @@ type ValidatorSubmission = {
     console.log("Round for submission", round)
     if (!round || round.finalized) return;
   
-    // if (!round.expectedValidators.has(submission.validatorPubkey)) return;
+    // if (!round.expectedValidators.has(submission.validatorPubkey)) return; // TODO: Uncomment this
   
-    // if (round.submissions.has(submission.validatorPubkey)) return;
+    // if (round.submissions.has(submission.validatorPubkey)) return; // TODO: Uncomment this
   
     if (!verifySignature(submission)) return;
     const user = await prisma.user.findUnique({
@@ -160,17 +160,17 @@ type ValidatorSubmission = {
       latencies.length === 0
         ? 0
         : latencies[Math.floor(latencies.length / 2)];
-  
+    const status = uptimePercent > 5000 ? "UP" : "DOWN";
     const report = {
       targetUrl: round.targetUrl,
       roundTimestamp: round.roundTimestamp,
       submissions,
       uptimePercent,
       medianLatency,
-      status: submissions[0]?.data.status // TODO: Handle this
+      status: status
     };
     console.log("Report", report)
-    const report_hash = await uploadToIpfs(report); // TODO: maybe report hash should be hash of report json not CID
+    const report_hash = await uploadToIpfs(report);
     console.log("Report Hash", report_hash)
     const roundPDA = await submitRoundOnChain({
       targetUrl: round.targetUrl as string,
@@ -186,7 +186,7 @@ type ValidatorSubmission = {
       uptimePercent,
       medianLatency: medianLatency!,
       report_hash,
-      status: submissions[0]?.data.status!,
+      status: status,
       roundPDA
     });
     console.log("Submitted on chain")
@@ -282,7 +282,7 @@ async function submitRoundOffChain({
     roundTimestamp: number;
     uptimePercent: number;
     medianLatency: number;
-    report_hash: string;
+    report_hash: Uint8Array<ArrayBuffer>;
     status: string;
     roundPDA: string;
   }) {
@@ -320,7 +320,7 @@ async function submitRoundOnChain({
   roundTimestamp: number;
   uptimePercent: number;
   medianLatency: number;
-  report_hash: string;
+  report_hash: Uint8Array;
   submissions: ValidatorSubmission[];
 }){
   const website = await prisma.website.findUnique({
@@ -345,7 +345,7 @@ async function submitRoundOnChain({
     }
   })
   const report_hash_bytes = Array.from(
-    createHash("sha256").update(Buffer.from(report_hash)).digest()
+    report_hash
   )
   console.log("Args for submit round", {
     target_id,
@@ -400,7 +400,9 @@ async function uploadToIpfs(report: any){
   const file = new File([JSON.stringify(report)], "report.json", { type: "application/json" });
   const upload = await pinata.upload.public.file(file);
   console.log(upload)
-  return upload.cid
+  const reportJson = JSON.stringify(report)
+  const reportHash = createHash("sha256").update(Buffer.from(reportJson)).digest()
+  return reportHash
 }
 setInterval(() => {
     const now = Date.now();
