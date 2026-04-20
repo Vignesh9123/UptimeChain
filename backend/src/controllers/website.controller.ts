@@ -2,7 +2,8 @@ import type { Request, Response } from "express";
 import z from "zod";
 import { prisma } from "@uptime-chain/database";
 import { CheckStatus, type Subscription, type Website } from "@uptime-chain/database";
-
+import { createHash } from "crypto";
+import { program, authority } from "../config";
 const addWebsiteSchema = z.object({
     name: z.string().min(3).max(20),
     url: z.url("Invalid URL"),
@@ -20,6 +21,17 @@ export const addWebsite = async (req: Request, res: Response) => {
             }
         })
         if (!existingWebsite) {
+            const bytes = Buffer.from(cleanedBody.url, "utf8");
+            const target_id = Array.from(
+                createHash("sha256").update(bytes).digest()
+            );
+            const txn1 = await program?.methods?.initializeTarget?.(target_id)
+                .accounts({
+                authority: authority.publicKey
+                })
+                .signers([authority])
+                .rpc() // TODO: Better to move this to place when we add unique website to our database
+            console.log("Initialize target transaction: ", txn1);
             website = await prisma.website.create({
                 data: {
                     url: cleanedBody.url,

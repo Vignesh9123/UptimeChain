@@ -297,7 +297,7 @@ async function submitRoundOffChain({
     const roundResult = await prisma.roundResult.create({
       data: {
         websiteId: website.id,
-        solana_address: roundPDA, // TODO: Add solana address
+        solana_address: roundPDA,
         uptime_percentage: uptimePercent,
         responseTime: medianLatency,
         roundTimestamp: new Date(roundTimestamp),
@@ -335,13 +335,6 @@ async function submitRoundOnChain({
   const target_id = Array.from(
     createHash("sha256").update(bytes).digest()
   );
-  const txn1 = await program?.methods?.initializeTarget?.(target_id)
-    .accounts({
-      authority: authority.publicKey
-    })
-    .signers([authority])
-    .rpc() // TODO: Better to move this to place when we add unique website to our database
-    console.log("Initialize target transaction: ", txn1);
   const round_timestamp = new BN(Math.floor(roundTimestamp / 1000));
   const reward_per_validator = new BN(0.001 * web3.LAMPORTS_PER_SOL)
   const validators = submissions.map((submission) => {
