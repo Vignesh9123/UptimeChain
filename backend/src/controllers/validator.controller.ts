@@ -31,7 +31,7 @@ const registerValidatorOnChain = async (validatorPubkey: string) => {
     }
 }
 
-export async function verifyStake(txSig: string) {
+async function verifyStake(txSig: string) {
     const parsed = await txParser.parseTransaction(connection, txSig);
     if(!parsed){
         console.error("Transaction not found")

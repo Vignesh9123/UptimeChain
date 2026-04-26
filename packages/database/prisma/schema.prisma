@@ -29,6 +29,7 @@ model User {
   updatedAt DateTime @updatedAt
   subscriptions Subscription[]
   validator Validator?
+  wallet_balance BigInt @default(0)
 }
 
 model Website {
