@@ -1,3 +1,5 @@
 export * from './user.controller'
 export * from './website.controller'
 export * from './ping.controller'
+export * from './client.controller'
+export * from './validator.controller'

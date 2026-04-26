@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getValidator, registerValidatorPubkey, stakeValidator } from "../controllers/validator.controller";
+import { getValidator, registerValidatorPubkey, stakeValidator } from "../controllers";
 import { authMiddleware } from "../middlewares";
 const router = Router()
 router.post('/register-pubkey',authMiddleware, registerValidatorPubkey)
