@@ -6,10 +6,15 @@ import { Plus, Activity, ShieldCheck, Clock, CheckCircle, AlertTriangle, XCircle
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AddWebsiteForm } from '@/components/AddWebsiteForm';
+import { Input } from '@/components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useUserStore } from '@/store/userStore';
 import { getLatestResultsForUser, getUserWebsites, type UserWebsite } from '@/services/website.service';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import idl from '../idl/contract.json';
 const data = [
   { name: 'Mon', uptime: 99.9 },
   { name: 'Tue', uptime: 100 },
@@ -26,7 +31,54 @@ const ClientDashboard = () => {
   const [latestResults, setLatestResults] = useState<any[]>([]);
   const [isLoadingWebsites, setIsLoadingWebsites] = useState(true);
   const { isAuthenticated, isLoading } = useUserStore();
+  const { connection } = useConnection();
+  const wallet = useAnchorWallet();
   const navigate = useNavigate();
+  const [rewardAmountSol, setRewardAmountSol] = useState('');
+  const [isFundingRewardVault, setIsFundingRewardVault] = useState(false);
+
+  const programId = useMemo(() => new PublicKey((idl as any).address), []);
+  const rewardVaultPda = useMemo(() => {
+    const [pda] = PublicKey.findProgramAddressSync([Buffer.from("reward_vault")], programId);
+    return pda;
+  }, [programId]);
+
+  const handleAddSolToRewardVault = async () => {
+    if (!wallet || !rewardAmountSol) return;
+    const amount = Number(rewardAmountSol);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert("Enter a valid SOL amount.");
+      return;
+    }
+
+    setIsFundingRewardVault(true);
+    try {
+      const lamports = Math.round(amount * LAMPORTS_PER_SOL);
+      const ix = SystemProgram.transfer({
+        fromPubkey: wallet.publicKey,
+        toPubkey: rewardVaultPda,
+        lamports,
+      });
+
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      const tx = new Transaction().add(ix);
+      tx.feePayer = wallet.publicKey;
+      tx.recentBlockhash = blockhash;
+
+      const signed = await wallet.signTransaction(tx);
+      const signature = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false });
+      await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+
+      setRewardAmountSol('');
+      alert(`Transferred ${amount} SOL to Reward Vault.\nSignature: ${signature}`);
+    } catch (error) {
+      console.error("Failed to fund reward vault", error);
+      alert("Transfer failed. See console for details.");
+    } finally {
+      setIsFundingRewardVault(false);
+    }
+  };
+
   const fetchWebsites = () => {
     setIsLoadingWebsites(true);
     getUserWebsites()
@@ -81,12 +133,33 @@ const ClientDashboard = () => {
             <h2 className="text-3xl font-bold tracking-tight">Client Dashboard</h2>
             <p className="text-muted-foreground">Overview of your monitored endpoints and system health.</p>
           </div>
+          <div className='flex gap-2'>
+            <WalletMultiButton className="!bg-primary !h-10" />
+            <div className="hidden md:flex items-center gap-2">
+              <Input
+                type="number"
+                min="0"
+                step="0.000000001"
+                inputMode="decimal"
+                placeholder="Amount (SOL)"
+                value={rewardAmountSol}
+                onChange={(e) => setRewardAmountSol(e.target.value)}
+                disabled={!wallet || isFundingRewardVault}
+                className="w-40"
+              />
+              <Button
+                onClick={handleAddSolToRewardVault}
+                disabled={!wallet || isFundingRewardVault || !rewardAmountSol}
+              >
+                Add SOL
+              </Button>
+            </div>
 
-          <Button size="lg" className="gap-2 md:hidden" asChild>
-            <Link to="/client/add-website">
-              <Plus className="h-4 w-4" /> Add Website
-            </Link>
-          </Button>
+            <Button size="lg" className="gap-2 md:hidden" asChild>
+              <Link to="/client/add-website">
+                <Plus className="h-4 w-4" /> Add Website
+              </Link>
+            </Button>
 
           <Dialog open={addWebsiteDialogOpen} onOpenChange={setAddWebsiteDialogOpen}>
             <DialogTrigger asChild>
@@ -105,6 +178,7 @@ const ClientDashboard = () => {
             </DialogContent>
           </Dialog>
         </div>
+          </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
