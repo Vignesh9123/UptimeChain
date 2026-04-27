@@ -75,7 +75,7 @@ export const addWebsite = async (req: Request, res: Response) => {
             })
         }
         else {
-            if (cleanedBody.check_interval < existingSchedule.interval_seconds) {
+            if (cleanedBody.check_interval * 60 < existingSchedule.interval_seconds) {
                 await prisma.websiteSchedule.update({
                     where: {
                         id: existingSchedule.id,

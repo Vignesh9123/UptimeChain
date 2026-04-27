@@ -1,6 +1,10 @@
 import { prisma } from "@uptime-chain/database";
 import type { Request, Response } from "express";
 
+const getIndexToFilter = (minCheckInterval: number, subscription_interval: number) => {
+    return Math.floor(subscription_interval / minCheckInterval)
+}
+
 export const getLatestResultsForUser = async (req: Request, res: Response) => {
     try {
         const userId = req.user.id
@@ -66,6 +70,16 @@ export const getWebsiteResults = async (req: Request, res: Response) => {
                 error: 'Subscription not found'
             })
         }
+        const websiteSchedule = await prisma.websiteSchedule.findFirst({
+            where: {
+                websiteId
+            }
+        })
+        if(!websiteSchedule) {
+            return res.status(404).json({
+                error: 'Website schedule not found'
+            })
+        }
         const results = await prisma.roundResult.findMany({
             where: {
                 websiteId
@@ -77,16 +91,14 @@ export const getWebsiteResults = async (req: Request, res: Response) => {
                 createdAt: 'desc'
             }
         })
-        const filteredResults = results.filter((result) => {
-            const checkInterval = subscription.check_interval
-            const roundTimestamp = result.roundTimestamp
-            const tolerance = 60000; // a min of tolerance is fine since the interval cannot be less than 5 min
-            const intervalMs = checkInterval * 1000;
-            const offset = subscription.createdAt.getTime();
-            const mod = (roundTimestamp.getTime() - offset) % intervalMs;
-            const diff = Math.min(mod, intervalMs - mod);
-            return diff <= tolerance;
+        const indexToFilter = getIndexToFilter(websiteSchedule.interval_seconds * 1000, subscription.check_interval * 1000)
+        console.log({
+            indexToFilter,
+            websiteId,
+            web:websiteSchedule.interval_seconds,
+            sub:subscription.check_interval
         })
+        const filteredResults = results.filter((round, index) => index % indexToFilter === 0 && round.roundTimestamp.getTime() > subscription.createdAt.getTime())
         return res.status(200).json({
             data:filteredResults
         })
@@ -115,7 +127,8 @@ export const getWebsiteSubmissions = async (req: Request, res: Response) => {
             orderBy: { roundTimestamp: 'desc' },
             take: 500,
         })
-        return res.status(200).json({ data: submissions })
+        const filteredSubmissions = submissions.filter((submission) => submission.roundTimestamp.getTime() > subscription.createdAt.getTime())
+        return res.status(200).json({ data: filteredSubmissions })
     } catch (error) {
         return res.status(500).json({ error })
     }

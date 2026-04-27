@@ -270,7 +270,7 @@ async function submitValidatorSubmissionsOffChain({
         continent
       },
     });
-    console.log("Validator submission submitted to chain:", validatorSubmission);
+    console.log("Validator submission submitted to db:", validatorSubmission);
   }
   
 async function submitRoundOffChain({

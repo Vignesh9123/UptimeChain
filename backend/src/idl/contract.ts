@@ -347,7 +347,7 @@ export type Contract = {
           "type": {
             "array": [
               "u8",
-              16
+              32
             ]
           }
         },
@@ -660,7 +660,7 @@ export type Contract = {
             "type": {
               "array": [
                 "u8",
-                16
+                32
               ]
             }
           },
