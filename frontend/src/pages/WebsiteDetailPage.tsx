@@ -7,6 +7,7 @@ import {
     Activity,
     Clock,
     CheckCircle,
+    Copy,
     XCircle,
     HelpCircle,
     Globe,
@@ -20,6 +21,7 @@ import { useEffect, useState, Fragment } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
 import { getWebsiteById, getWebsiteResults, getWebsiteSubmissions, type UserWebsite, type RoundResult, type ValidatorSubmission } from '@/services/website.service';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const CONTINENT_LABELS: Record<string, string> = {
     'NA': 'North America',
@@ -41,12 +43,16 @@ const CONTINENT_COLORS: Record<string, string> = {
     'AN': '#64748b',
 };
 
+const IPFS_GATEWAY = import.meta.env.VITE_IPFS_GATEWAY;
+
 const WebsiteDetailPage = () => {
     const { websiteId } = useParams<{ websiteId: string }>();
     const [website, setWebsite] = useState<UserWebsite | null>(null);
     const [rounds, setRounds] = useState<RoundResult[]>([]);
     const [submissions, setSubmissions] = useState<ValidatorSubmission[]>([]);
     const [expandedRound, setExpandedRound] = useState<string | null>(null);
+    const [tickDialogOpen, setTickDialogOpen] = useState(false);
+    const [selectedTickRound, setSelectedTickRound] = useState<RoundResult | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { isAuthenticated, isLoading: authLoading } = useUserStore();
     const navigate = useNavigate();
@@ -145,6 +151,21 @@ const WebsiteDetailPage = () => {
         }));
 
     const tickData = rounds.slice(0, 60).reverse();
+
+    const copyToClipboard = async (text: string) => {
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+            alert('Failed to copy to clipboard');
+        }
+    };
+
+    const openTickDialog = (round: RoundResult) => {
+        setSelectedTickRound(round);
+        setTickDialogOpen(true);
+    };
 
     const formatInterval = (seconds: number) => {
         if (seconds < 60) return `${seconds}s`;
@@ -296,7 +317,16 @@ const WebsiteDetailPage = () => {
                                 <div
                                     key={round.id || index}
                                     title={`${new Date(round.roundTimestamp).toLocaleString()} - ${round.status} ${round.status === 'UP' ? `(${Math.round(round.responseTime)}ms)` : ''}`}
-                                    className={`h-8 w-3 rounded-sm transition-all duration-200 hover:scale-y-125 cursor-default ${round.status === 'UP'
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => openTickDialog(round)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            openTickDialog(round);
+                                        }
+                                    }}
+                                    className={`h-8 w-3 rounded-sm transition-all duration-200 hover:scale-y-125 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${round.status === 'UP'
                                         ? 'bg-emerald-500/80 hover:bg-emerald-500'
                                         : round.status === 'DOWN'
                                             ? 'bg-red-500/80 hover:bg-red-500'
@@ -319,6 +349,104 @@ const WebsiteDetailPage = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            <Dialog
+                open={tickDialogOpen}
+                onOpenChange={(open) => {
+                    setTickDialogOpen(open);
+                    if (!open) setSelectedTickRound(null);
+                }}
+            >
+                <DialogContent className="sm:max-w-[520px]">
+                    <DialogHeader>
+                        <DialogTitle>Round details</DialogTitle>
+                        <DialogDescription>
+                            {selectedTickRound ? (
+                                <span className="font-mono">
+                                    {new Date(selectedTickRound.roundTimestamp).toLocaleString()}
+                                </span>
+                            ) : (
+                                ' '
+                            )}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedTickRound && (
+                        <div className="space-y-4">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-lg border bg-muted/20 p-3">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Status</p>
+                                    <div>
+                                        {selectedTickRound.status === 'UP' ? (
+                                            <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 gap-1">
+                                                <CheckCircle className="h-3 w-3" /> Up
+                                            </Badge>
+                                        ) : selectedTickRound.status === 'DOWN' ? (
+                                            <Badge className="bg-red-500/15 text-red-600 border-red-500/30 gap-1">
+                                                <XCircle className="h-3 w-3" /> Down
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30 gap-1">
+                                                <HelpCircle className="h-3 w-3" /> Unknown
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-lg border bg-muted/20 p-3">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Latency</p>
+                                    <p className="text-sm font-medium">
+                                        {selectedTickRound.status === 'UP' ? (
+                                            <span className="font-mono">{Math.round(selectedTickRound.responseTime)}ms</span>
+                                        ) : (
+                                            <span className="text-muted-foreground">—</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="rounded-lg border p-3">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Solana address</p>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        title="Copy Solana address"
+                                        aria-label="Copy Solana address"
+                                        disabled={!selectedTickRound.solana_address}
+                                        onClick={() => copyToClipboard(selectedTickRound.solana_address)}
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <p className="font-mono text-sm break-all">{selectedTickRound.solana_address || '—'}</p>
+                            </div>
+                            <div className="rounded-lg border p-3">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">IPFS URL</p>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        title="Copy IPFS URL"
+                                        aria-label="Copy IPFS URL"
+                                        disabled={!selectedTickRound.ipfs_cid}
+                                        onClick={() => copyToClipboard(`${IPFS_GATEWAY}/${selectedTickRound.ipfs_cid}`)}
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <p className="font-mono text-sm break-all">
+                                    {selectedTickRound.ipfs_cid ? `${IPFS_GATEWAY}/${selectedTickRound.ipfs_cid}` : '—'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {chartData.length > 0 && (
                 <Card>

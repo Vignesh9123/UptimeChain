@@ -80,6 +80,7 @@ model RoundResult {
   responseTime Float
   report_hash Bytes
   solana_address String
+  ipfs_cid String @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

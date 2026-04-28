@@ -6,9 +6,19 @@
         "frontend",
         "hub",
         "verifier",
+        "queue-api",
+        "validator-container",
         "packages/*"
     ],
+    "scripts": {
+        "dev": "concurrently --kill-others-on-fail --prefix '[{name}]' --timestamp --names 'backend,frontend,queue-api,validator,verifier,studio' --prefix-colors 'blue.bold,green.bold,yellow.bold,magenta.bold,cyan.bold,white.bold' 'bun run --cwd backend dev' 'npm --prefix ./frontend run dev' 'bun run --cwd queue-api dev' 'wait-on tcp:3000 && bun run --cwd validator-container dev' 'bun run --cwd verifier dev' 'bun run --cwd ./packages/database studio'",
+        "db:studio": "bun run --cwd ./packages/database studio"
+    },
     "dependencies": {
         "typescript": "^5.0.0"
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1",
+        "wait-on": "^9.0.5"
     }
 }

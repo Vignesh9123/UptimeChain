@@ -174,14 +174,16 @@ type ValidatorSubmission = {
       status: status
     };
     console.log("Report", report)
-    const report_hash = await uploadToIpfs(report);
-    console.log("Report Hash", report_hash)
+    const ipfsCid = await uploadToIpfs(report);
+    console.log("Ipfs cid", ipfsCid)
+    const reportJson = JSON.stringify(report)
+    const reportHash = createHash("sha256").update(Buffer.from(reportJson)).digest()
     const roundPDA = await submitRoundOnChain({
       targetUrl: round.targetUrl as string,
       roundTimestamp: round.roundTimestamp,
       uptimePercent,
       medianLatency: medianLatency!,
-      report_hash,
+      reportHash,
       submissions
     })
     await submitRoundOffChain({
@@ -189,7 +191,8 @@ type ValidatorSubmission = {
       roundTimestamp: round.roundTimestamp,
       uptimePercent,
       medianLatency: medianLatency!,
-      report_hash,
+      reportHash,
+      ipfsCid: ipfsCid,
       status: status,
       roundPDA
     });
@@ -278,7 +281,8 @@ async function submitRoundOffChain({
     roundTimestamp,
     uptimePercent,
     medianLatency,
-    report_hash,
+    reportHash,
+    ipfsCid,
     status,
     roundPDA
   }: {
@@ -286,7 +290,8 @@ async function submitRoundOffChain({
     roundTimestamp: number;
     uptimePercent: number;
     medianLatency: number;
-    report_hash: Uint8Array<ArrayBuffer>;
+    reportHash: Uint8Array<ArrayBuffer>;
+    ipfsCid: string;
     status: string;
     roundPDA: string;
   }) {
@@ -304,8 +309,9 @@ async function submitRoundOffChain({
         solana_address: roundPDA,
         uptime_percentage: uptimePercent,
         responseTime: medianLatency,
+        ipfs_cid: ipfsCid,
         roundTimestamp: new Date(roundTimestamp),
-        report_hash,
+        report_hash: reportHash,
         status: status as CheckStatus,
       },
     });
@@ -317,14 +323,14 @@ async function submitRoundOnChain({
   roundTimestamp,
   uptimePercent,
   medianLatency,
-  report_hash,
+  reportHash,
   submissions
 }: {
   targetUrl: string;
   roundTimestamp: number;
   uptimePercent: number;
   medianLatency: number;
-  report_hash: Uint8Array;
+  reportHash: Uint8Array;
   submissions: ValidatorSubmission[];
 }){
   const website = await prisma.website.findUnique({
@@ -348,15 +354,15 @@ async function submitRoundOnChain({
       isSigner: false
     }
   })
-  const report_hash_bytes = Array.from(
-    report_hash
+  const reportHashBytes = Array.from(
+    reportHash
   )
   console.log("Args for submit round", {
     target_id,
     round_timestamp,
     uptimePercent,
     medianLatency,
-    report_hash_bytes,
+    reportHash,
     reward_per_validator
   })
   const txn = await program?.methods
@@ -365,7 +371,7 @@ async function submitRoundOnChain({
       round_timestamp,
       uptimePercent,
       medianLatency,
-      report_hash_bytes,
+      reportHash,
       reward_per_validator
     )
     .accounts({
@@ -404,9 +410,7 @@ async function uploadToIpfs(report: any){
   const file = new File([JSON.stringify(report)], "report.json", { type: "application/json" });
   const upload = await pinata.upload.public.file(file);
   console.log(upload)
-  const reportJson = JSON.stringify(report)
-  const reportHash = createHash("sha256").update(Buffer.from(reportJson)).digest()
-  return reportHash
+  return upload.cid
 }
 setInterval(() => {
     const now = Date.now();

@@ -27,6 +27,7 @@ export interface RoundResult {
     responseTime: number;
     report_hash: string;
     solana_address: string;
+    ipfs_cid: string;
     createdAt: string;
     updatedAt: string;
     website: {
