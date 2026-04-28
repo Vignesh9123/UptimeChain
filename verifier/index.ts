@@ -94,7 +94,7 @@ type ValidatorSubmission = {
   
     // if (!round.expectedValidators.has(submission.validatorPubkey)) return; // TODO: Uncomment this
   
-    // if (round.submissions.has(submission.validatorPubkey)) return; // TODO: Uncomment this
+    if (round.submissions.has(submission.validatorPubkey)) return;
   
     if (!verifySignature(submission)) return;
     const user = await prisma.user.findUnique({

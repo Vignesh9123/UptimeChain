@@ -37,13 +37,13 @@ async function verifyStake(txSig: string) {
         console.error("Transaction not found")
         return
     }
-    const instruction = parsed[0];
+    const instruction = parsed.at(-1);
     if(!instruction?.name){
         console.error("Instruction not found")
         return
     }
     console.log(instruction.programId.toBase58())
-    if(instruction.programId.toBase58() !== PROGRAM_ID.toBase58()){
+    if(instruction.programId.toBase58() !== PROGRAM_ID.toBase58() && instruction.programId.toBase58()!= "ComputeBudget111111111111111111111111111111"){
         console.error("Instruction not from this program")
         return
     }
@@ -117,7 +117,11 @@ export const registerValidatorPubkey = async (req: Request, res: Response) => {
             }
         })
         await registerValidatorOnChain(cleanedBody.pubkey)
-        return res.status(200).json({message: "Validator registered successfully", data: validator})
+        return res.status(200).json({message: "Validator registered successfully", data: {
+            ...validator,
+            wallet_balance: validator.wallet_balance.toString()
+            
+        }})
     } catch (error) {
         console.error(error)
         return res.status(500).json({message: "Internal server error"})
