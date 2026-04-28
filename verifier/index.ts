@@ -362,7 +362,7 @@ async function submitRoundOnChain({
     round_timestamp,
     uptimePercent,
     medianLatency,
-    reportHash,
+    reportHashBytes,
     reward_per_validator
   })
   const txn = await program?.methods
@@ -371,7 +371,7 @@ async function submitRoundOnChain({
       round_timestamp,
       uptimePercent,
       medianLatency,
-      reportHash,
+      reportHashBytes,
       reward_per_validator
     )
     .accounts({
