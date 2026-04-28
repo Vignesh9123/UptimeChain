@@ -11,6 +11,8 @@ import { createHash } from "crypto";
 import { program, authority } from './anchor';
 import { BN } from '@coral-xyz/anchor';
 import { web3 } from '@coral-xyz/anchor';
+import { websiteDownEmailTemplate } from './email_templates';
+import { sendEmail } from './sendMail';
 
 const app = express();
 app.use(express.json())
@@ -197,6 +199,56 @@ type ValidatorSubmission = {
       roundPDA
     });
     console.log("Submitted on chain")
+    if(status === "DOWN"){
+      try {
+        const website = await prisma.website.findUnique({
+          where: {
+            url: String(round.targetUrl),
+          },
+        })
+        if(!website) {
+          console.log("Website not found")
+          return;
+        }
+        const users = await prisma.user.findMany({
+          where: {
+            subscriptions: {
+              some: {
+                websiteId: website.id
+              },
+            }
+          },
+          include: {
+            subscriptions: {
+              where: {
+                websiteId: website.id
+              }
+            }
+          }
+        })
+        console.log("Users to send mail",users)
+        for(const user of users){
+          const email = user.email
+          const subscription = user.subscriptions[0]
+          if(!subscription){
+            console.log("Subscription not found")
+            continue;
+          }
+          if(!email){
+            console.log("Email not found")
+            continue;
+          }
+          const body = websiteDownEmailTemplate(user.name, subscription.name, new Date(round.roundTimestamp))
+          await sendEmail({
+            email,
+            subject: `Website ${subscription.name} is down`,
+            message: body
+          })
+        }
+      } catch (error) {
+        console.log("Error sending email", error)
+      } 
+    }
     rounds.delete(roundKey(round.targetUrl, round.roundTimestamp));
   }    
 
