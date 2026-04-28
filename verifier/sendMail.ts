@@ -19,7 +19,7 @@ export const sendEmail = async (options:{
 
     const mailOptions = {
         from: {
-            name: 'Streamforge',
+            name: 'UptimeChain',
             address: process.env.SENDER_EMAIL!
         },
         to: options.email,
