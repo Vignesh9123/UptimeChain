@@ -17,6 +17,7 @@ import { sendEmail } from './sendMail';
 const app = express();
 app.use(express.json())
 const ROUND_TIMEOUT_MS = 120_000;
+const AFTER_QUORUM_TIMEOUT_MS = 60_000;
 const MIN_QUORUM_RATIO = 2 / 3;
 const MIN_VALIDATORS = 3;
 
@@ -48,6 +49,7 @@ type ValidatorSubmission = {
     submissions: Map<string, ValidatorSubmission>;
     startedAt: number;
     finalized: boolean;
+    hasQuorumReached: boolean
   };
   
   const rounds = new Map<RoundKey, RoundCollector>();
@@ -56,11 +58,15 @@ type ValidatorSubmission = {
     return `${targetUrl}:${ts}`;
   }
   
-  function requiredQuorum(expectedCount: number): number {
-    return Math.max(
-      MIN_VALIDATORS,
-      Math.ceil(expectedCount * MIN_QUORUM_RATIO)
-    );
+  function checkQuorum(round: RoundCollector) {
+    if(round.submissions.size >= MIN_VALIDATORS){
+      if((round.submissions.size / round.expectedValidators.size) >= MIN_QUORUM_RATIO){
+        round.hasQuorumReached = true
+        return
+      }
+    }
+    round.hasQuorumReached = false
+    
   }
   function startRound(
     targetUrl: String,
@@ -78,6 +84,7 @@ type ValidatorSubmission = {
       submissions: new Map(),
       startedAt: Date.now(),
       finalized: false,
+      hasQuorumReached: false
     });
   }
 
@@ -133,13 +140,19 @@ type ValidatorSubmission = {
   function maybeFinalizeRound(round: RoundCollector) {
     if (round.finalized) return;
   
-    const submissionCount = round.submissions.size;
-    const quorum = requiredQuorum(round.expectedValidators.size);
+    checkQuorum(round);
+    console.log("After Quorum check",{
+      round
+    })
   
     const now = Date.now();
     const timedOut = now - round.startedAt >= ROUND_TIMEOUT_MS;
-  
-    if (submissionCount >= quorum || timedOut) {
+    const afterQuorumTimeout = now - round.startedAt >= AFTER_QUORUM_TIMEOUT_MS;
+    console.log("Times",{
+      timedOut,
+      afterQuorumTimeout
+    })
+    if ( (round.hasQuorumReached && afterQuorumTimeout) || timedOut) {
       console.log("Finalizing round")
       finalizeRound(round);
     }
@@ -468,9 +481,12 @@ setInterval(() => {
     const now = Date.now();
     for (const round of rounds.values()) {
       if (
-        !round.finalized &&
-        now - round.startedAt >= ROUND_TIMEOUT_MS
+        (!round.finalized && round.hasQuorumReached && 
+        now - round.startedAt >= AFTER_QUORUM_TIMEOUT_MS) ||
+        (!round.finalized &&
+        now - round.startedAt >= ROUND_TIMEOUT_MS)
       ) {
+        console.log("Finalizing round at", new Date(now).getTime())
         finalizeRound(round);
       }
     }

@@ -90,7 +90,7 @@ export const getWebsiteResults = async (req: Request, res: Response) => {
         const filteredResults = results.filter((result) => {
             const checkInterval = subscription.check_interval
             const roundTimestamp = result.roundTimestamp
-            const tolerance = 60000; // a min of tolerance is fine since the interval cannot be less than 5 min
+            const tolerance = 120000; // 2 min of tolerance is fine since the interval cannot be less than 5 min
             const intervalMs = checkInterval * 1000;
             const offset = subscription.createdAt.getTime();
             const mod = (roundTimestamp.getTime() - offset) % intervalMs;
