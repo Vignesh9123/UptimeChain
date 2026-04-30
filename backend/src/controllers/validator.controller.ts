@@ -203,7 +203,6 @@ export const registerValidatorPubkey = async (req: Request, res: Response) => {
                 validator: true
             }
         })
-        console.log(user)
         if(!user) {
             return res.status(401).json({message: "Unauthorized"})
         }

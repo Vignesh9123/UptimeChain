@@ -26,11 +26,13 @@ async function latencyAndUptimeCheck(targetUrl: string){
         const startTime = Date.now()
         fetch(targetUrl, {method:"HEAD"})
         .then(async (response) => {
-            if(response.status !== 200){
-                resolve({status:"DOWN", latency: 0})
-            }
             const endTime = Date.now()
             const latency = endTime - startTime;
+            if (response.status >= 200 && response.status < 300) {
+                console.log(targetUrl, "is up and running successfully")
+            } else {
+                resolve({ status: "DOWN", latency: 0 });
+            }
             console.log("Time taken to ping", targetUrl,"is ", latency, "ms")
             resolve({status:"UP", latency})
         })

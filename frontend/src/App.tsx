@@ -21,7 +21,7 @@ function App() {
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
-    <ConnectionProvider endpoint={"http://localhost:8899"}>
+    <ConnectionProvider endpoint={"http://127.0.0.1:8899"}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <Router>
