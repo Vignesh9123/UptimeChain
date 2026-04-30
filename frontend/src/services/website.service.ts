@@ -72,3 +72,23 @@ export const getWebsiteSubmissions = async (websiteId: string) => {
     const response = await axiosClient.get<{ data: ValidatorSubmission[] }>(`/ping/${websiteId}/submissions`);
     return response.data.data;
 }
+
+export type ContinentRoundStatus = {
+    websiteId: string;
+    roundTimestamp: string;
+    continents: Array<{
+        continent: string;
+        up: number;
+        down: number;
+        unknown: number;
+        total: number;
+        status: 'UP' | 'DOWN' | 'UNKNOWN';
+    }>;
+}
+
+export const getWebsiteContinentStatusForRound = async (websiteId: string, roundTimestamp: string) => {
+    const response = await axiosClient.get<{ data: ContinentRoundStatus }>(`/ping/${websiteId}/continent-status`, {
+        params: { roundTimestamp },
+    });
+    return response.data.data;
+}

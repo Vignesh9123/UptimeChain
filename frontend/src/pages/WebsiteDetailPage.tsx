@@ -20,7 +20,7 @@ import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianG
 import { useEffect, useState, Fragment } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
-import { getWebsiteById, getWebsiteResults, getWebsiteSubmissions, type UserWebsite, type RoundResult, type ValidatorSubmission } from '@/services/website.service';
+import { getWebsiteById, getWebsiteContinentStatusForRound, getWebsiteResults, getWebsiteSubmissions, type ContinentRoundStatus, type UserWebsite, type RoundResult, type ValidatorSubmission } from '@/services/website.service';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const CONTINENT_LABELS: Record<string, string> = {
@@ -50,6 +50,7 @@ const WebsiteDetailPage = () => {
     const [website, setWebsite] = useState<UserWebsite | null>(null);
     const [rounds, setRounds] = useState<RoundResult[]>([]);
     const [submissions, setSubmissions] = useState<ValidatorSubmission[]>([]);
+    const [continentRoundStatus, setContinentRoundStatus] = useState<ContinentRoundStatus | null>(null);
     const [expandedRound, setExpandedRound] = useState<string | null>(null);
     const [tickDialogOpen, setTickDialogOpen] = useState(false);
     const [selectedTickRound, setSelectedTickRound] = useState<RoundResult | null>(null);
@@ -74,6 +75,19 @@ const WebsiteDetailPage = () => {
             ]);
             setRounds(results);
             setSubmissions(subs);
+
+            const latestRound = results[0]
+            if (latestRound?.roundTimestamp) {
+                try {
+                    const crs = await getWebsiteContinentStatusForRound(sub.websiteId, latestRound.roundTimestamp)
+                    setContinentRoundStatus(crs)
+                } catch (e) {
+                    console.error('Failed to fetch continent round status:', e)
+                    setContinentRoundStatus(null)
+                }
+            } else {
+                setContinentRoundStatus(null)
+            }
         } catch (err) {
             console.error('Failed to fetch website data:', err);
         } finally {
@@ -200,6 +214,12 @@ const WebsiteDetailPage = () => {
         if (!submissionsByRound.has(key)) submissionsByRound.set(key, []);
         submissionsByRound.get(key)!.push(s);
     });
+
+    const continentStatusByCode = new Map<string, 'UP' | 'DOWN' | 'UNKNOWN'>(
+        (continentRoundStatus?.continents ?? []).map((c) => [c.continent, c.status])
+    )
+    const downContinents = (continentRoundStatus?.continents ?? []).filter((c) => c.status === 'DOWN')
+    const hasAnyContinentDown = downContinents.length > 0
 
     return (
         <div className="space-y-6">
@@ -513,11 +533,50 @@ const WebsiteDetailPage = () => {
                         <CardDescription>Aggregated validator results grouped by region.</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {continentRoundStatus && (
+                            <div className={`mb-4 rounded-lg border px-4 py-3 ${hasAnyContinentDown ? 'border-red-500/30 bg-red-500/10' : 'border-emerald-500/30 bg-emerald-500/10'}`}>
+                                <div className="flex items-center justify-between gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                        {hasAnyContinentDown ? (
+                                            <XCircle className="h-4 w-4 text-red-500" />
+                                        ) : (
+                                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                        )}
+                                        <p className="text-sm font-medium">
+                                            {hasAnyContinentDown
+                                                ? `Continent down detected (${downContinents.length})`
+                                                : 'No continent down detected'}
+                                        </p>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground font-mono">
+                                        Round: {new Date(continentRoundStatus.roundTimestamp).toLocaleString()}
+                                    </p>
+                                </div>
+                                {hasAnyContinentDown && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {downContinents.map((c) => (
+                                            <Badge
+                                                key={c.continent}
+                                                className="bg-red-500/15 text-red-600 border-red-500/30"
+                                                variant="outline"
+                                            >
+                                                {CONTINENT_LABELS[c.continent] || c.continent}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {continentStats.map((cs) => (
+                                (() => {
+                                    const roundStatus = continentStatusByCode.get(cs.continent)
+                                    const isDown = roundStatus === 'DOWN'
+                                    const isUp = roundStatus === 'UP'
+                                    return (
                                 <div
                                     key={cs.continent}
-                                    className="rounded-lg border p-4 space-y-3 transition-colors hover:bg-muted/50"
+                                    className={`rounded-lg border p-4 space-y-3 transition-colors hover:bg-muted/50 ${isDown ? 'border-red-500/30 bg-red-500/5' : ''}`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
@@ -526,6 +585,14 @@ const WebsiteDetailPage = () => {
                                                 style={{ backgroundColor: cs.color }}
                                             />
                                             <span className="font-medium text-sm">{cs.label}</span>
+                                            {roundStatus && (
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`ml-1 text-[11px] ${isDown ? 'text-red-600 border-red-500/30 bg-red-500/10' : isUp ? 'text-emerald-600 border-emerald-500/30 bg-emerald-500/10' : 'text-amber-600 border-amber-500/30 bg-amber-500/10'}`}
+                                                >
+                                                    {isDown ? 'Down' : isUp ? 'Up' : 'Unknown'}
+                                                </Badge>
+                                            )}
                                         </div>
                                         <span className="text-xs text-muted-foreground">{cs.totalChecks} checks</span>
                                     </div>
@@ -550,6 +617,8 @@ const WebsiteDetailPage = () => {
                                         />
                                     </div>
                                 </div>
+                                    )
+                                })()
                             ))}
                         </div>
                     </CardContent>

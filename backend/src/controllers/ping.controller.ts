@@ -1,5 +1,6 @@
 import { prisma } from "@uptime-chain/database";
 import type { Request, Response } from "express";
+import * as z from "zod";
 
 export const getLatestResultsForUser = async (req: Request, res: Response) => {
     try {
@@ -128,6 +129,78 @@ export const getWebsiteSubmissions = async (req: Request, res: Response) => {
         const filteredSubmissions = submissions.filter((submission) => submission.roundTimestamp.getTime() > subscription.createdAt.getTime())
         return res.status(200).json({ data: filteredSubmissions })
     } catch (error) {
+        return res.status(500).json({ error })
+    }
+}
+
+const roundTimestampQuerySchema = z.object({
+    roundTimestamp: z.string().min(1),
+})
+
+const parseRoundTimestamp = (value: string) => {
+    const asNumber = Number(value)
+    if (!Number.isNaN(asNumber) && Number.isFinite(asNumber)) {
+        return new Date(asNumber)
+    }
+    return new Date(value)
+}
+
+export const getWebsiteContinentStatusForRound = async (req: Request, res: Response) => {
+    try {
+        const websiteId = req.params.websiteId
+        if (!websiteId || typeof websiteId !== 'string') {
+            return res.status(400).json({ error: 'Website ID is required' })
+        }
+
+        const { roundTimestamp } = roundTimestampQuerySchema.parse(req.query)
+        const ts = parseRoundTimestamp(roundTimestamp)
+        if (Number.isNaN(ts.getTime())) {
+            return res.status(400).json({ error: 'roundTimestamp must be a valid timestamp (ms) or ISO string' })
+        }
+
+        const userId = req.user.id
+        const subscription = await prisma.subscription.findFirst({
+            where: { websiteId, userId }
+        })
+        if (!subscription) {
+            return res.status(404).json({ error: 'Subscription not found' })
+        }
+
+        const submissions = await prisma.validatorSubmissions.findMany({
+            where: { websiteId, roundTimestamp: ts },
+            select: { continent: true, status: true },
+        })
+
+        const continentMap: Record<string, { continent: string; up: number; down: number; unknown: number; total: number; status: 'UP' | 'DOWN' | 'UNKNOWN' }> = {}
+        for (const s of submissions) {
+            const continent = s.continent || 'Unknown'
+            if (!continentMap[continent]) {
+                continentMap[continent] = { continent, up: 0, down: 0, unknown: 0, total: 0, status: 'UNKNOWN' }
+            }
+            const entry = continentMap[continent]
+            entry.total += 1
+            if (s.status === 'UP') entry.up += 1
+            else if (s.status === 'DOWN') entry.down += 1
+            else entry.unknown += 1
+        }
+
+        const continents = Object.values(continentMap).map((c) => {
+            const status: 'UP' | 'DOWN' | 'UNKNOWN' =
+                c.down > 0 ? 'DOWN' : c.up > 0 ? 'UP' : 'UNKNOWN'
+            return { ...c, status }
+        })
+
+        return res.status(200).json({
+            data: {
+                websiteId,
+                roundTimestamp: ts.toISOString(),
+                continents,
+            }
+        })
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: error.issues?.[0]?.message ?? 'Invalid request' })
+        }
         return res.status(500).json({ error })
     }
 }
