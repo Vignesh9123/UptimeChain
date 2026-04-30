@@ -6,7 +6,7 @@ import { createHash } from "crypto";
 import { program, authority } from "../config";
 const addWebsiteSchema = z.object({
     name: z.string().min(3).max(20),
-    url: z.url("Invalid URL"),
+    url: z.url("Invalid URL").normalize(),
     check_interval: z.number().min(1).max(60),
     is_active: z.boolean().default(true),
 })
