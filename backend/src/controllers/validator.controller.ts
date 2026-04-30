@@ -220,4 +220,20 @@ export const registerValidatorRegion = async(req: Request, res: Response) => {
         return res.status(500).json({message: "Internal server error"})
     }
 }
-    
+
+export const getValidatorsByRegion = async (req: Request, res: Response) => {
+    try {
+        const validators = await prisma.validator.findMany()
+        const continentGroupedValidatorsCount: Record<string, number> = {}
+        validators.forEach((validator) => {
+            const continent = validator.continent
+            if (!continent) return
+            continentGroupedValidatorsCount[continent] =
+              (continentGroupedValidatorsCount[continent] ?? 0) + 1
+        })
+        return res.status(200).json({message: "Validators found", data: continentGroupedValidatorsCount})
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({message: "Internal server error"})
+    }
+}
