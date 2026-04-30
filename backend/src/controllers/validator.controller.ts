@@ -3,6 +3,16 @@ import type {Request, Response} from "express";
 import * as z from "zod";
 import { connection, txParser, instructionCoder, PROGRAM_ID, program , authority} from "../config";
 
+type ValidatorDashboardItem = {
+    websiteId: string
+    websiteUrl: string
+    roundTimestamp: string
+    status: string
+    responseTimeMs: number
+    isFinalized: boolean
+    earningSol: number
+}
+
 const stakeValidatorSchema = z.object({
     signature: z.string().min(1),
 })
@@ -90,6 +100,94 @@ export const getValidator = async (req: Request, res: Response) => {
     } catch (error) {
         console.error(error)
         return res.status(500).json({message: "Internal server error"})
+    }
+}
+
+export const getValidatorDashboard = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const user = await prisma.user.findUnique({
+            where: {
+                id: userId,
+                role: "VALIDATOR"
+            },
+            include: {
+                validator: true
+            }
+        })
+        if (!user || !user.validator) {
+            return res.status(401).json({ message: "Unauthorized" })
+        }
+
+        const validator = user.validator
+
+        const distinctRounds = await prisma.validatorSubmissions.findMany({
+            where: { validatorId: validator.id },
+            distinct: ["websiteId", "roundTimestamp"],
+            select: { websiteId: true, roundTimestamp: true },
+            orderBy: { roundTimestamp: "desc" },
+            take: 2000,
+        })
+
+        const roundKeys = distinctRounds.map((r) => ({
+            websiteId: r.websiteId,
+            roundTimestamp: r.roundTimestamp,
+        }))
+
+        const finalized = roundKeys.length === 0
+            ? []
+            : await prisma.roundResult.findMany({
+                where: {
+                    OR: roundKeys.map((rk) => ({
+                        websiteId: rk.websiteId,
+                        roundTimestamp: rk.roundTimestamp,
+                    }))
+                },
+                select: { websiteId: true, roundTimestamp: true },
+            })
+
+        const finalizedSet = new Set(finalized.map((r) => `${r.websiteId}:${r.roundTimestamp.toISOString()}`))
+        const finalizedRoundsCount = distinctRounds.filter((r) => finalizedSet.has(`${r.websiteId}:${r.roundTimestamp.toISOString()}`)).length
+
+        const totalEarningsSol = 0.001 * finalizedRoundsCount
+
+        const recent = await prisma.validatorSubmissions.findMany({
+            where: { validatorId: validator.id },
+            include: {
+                website: { select: { url: true } }
+            },
+            orderBy: { roundTimestamp: "desc" },
+            take: 25,
+        })
+
+        const recentItems: ValidatorDashboardItem[] = recent.map((s) => {
+            const key = `${s.websiteId}:${s.roundTimestamp.toISOString()}`
+            const isFinalized = finalizedSet.has(key)
+            return {
+                websiteId: s.websiteId,
+                websiteUrl: s.website.url,
+                roundTimestamp: s.roundTimestamp.toISOString(),
+                status: s.status,
+                responseTimeMs: s.responseTime,
+                isFinalized,
+                earningSol: isFinalized ? 0.001 : 0,
+            }
+        })
+
+        return res.status(200).json({
+            data: {
+                nodeId: user.wallet_pubkey ?? validator.id,
+                region: validator.continent || "Unknown",
+                isActive: validator.is_active,
+                roundsParticipated: distinctRounds.length,
+                finalizedRounds: finalizedRoundsCount,
+                totalEarningsSol,
+                recentActivity: recentItems,
+            }
+        })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({ message: "Internal server error" })
     }
 }
 

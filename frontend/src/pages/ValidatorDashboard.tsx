@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, Server, Cpu, CheckCircle, Activity, Wallet } from 'lucide-react';
+import { Coins, Cpu, CheckCircle, Activity, Wallet, AlertCircle } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { useUserStore } from '@/store/userStore';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,7 @@ const ValidatorDashboard = () => {
   const [stakeAmount, setStakeAmount] = useState('');
   const [isStaking, setIsStaking] = useState(false);
   const [validator, setValidator] = useState<any>(null);
+  const [dashboard, setDashboard] = useState<any>(null);
   useEffect(() => {
     const registerPubkey = async () => {
       if (wallet && user && !user.wallet_pubkey && user.role.toLowerCase() === 'validator') {
@@ -34,7 +35,7 @@ const ValidatorDashboard = () => {
       }
     };
     const getValidator = async () => {
-      if (wallet && user && user.role.toLowerCase() === 'validator') {
+      if (user && user.role.toLowerCase() === 'validator') {
         try {
           const response = await axiosClient.get('/validators/get-validator');
           setValidator({
@@ -46,8 +47,19 @@ const ValidatorDashboard = () => {
         }
       }
     };
+    const getDashboard = async () => {
+      if(user && user.role.toLowerCase() === 'validator'){
+        try {
+          const response = await axiosClient.get('/validators/dashboard');
+          setDashboard(response.data.data);
+        } catch (error) {
+          console.error("Failed to get validator dashboard", error);
+        }
+    }
+  }
     registerPubkey();
     getValidator();
+    getDashboard();
   }, [wallet, user]);
 
   const programId = useMemo(() => new PublicKey(idl.address), []);
@@ -67,6 +79,50 @@ const ValidatorDashboard = () => {
       navigate('/login');
     }
   }, [isLoading, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(async () => {
+      try {
+        const response = await axiosClient.get('/validators/dashboard');
+        setDashboard(response.data.data);
+      } catch (e) {
+        // ignore periodic errors
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  const nodeIdShort = useMemo(() => {
+    const id = dashboard?.nodeId as string | undefined;
+    if (!id) return '--';
+    if (id.length <= 10) return id;
+    return `${id.slice(0, 4)}...${id.slice(-4)}`;
+  }, [dashboard]);
+
+  const regionText = useMemo(() => {
+    return (dashboard?.region as string | undefined) ?? 'Unknown';
+  }, [dashboard]);
+
+  const isNodeActive = useMemo(() => {
+    return Boolean(dashboard?.isActive);
+  }, [dashboard]);
+
+  const totalEarningsSol = useMemo(() => {
+    const v = dashboard?.totalEarningsSol;
+    if (typeof v !== 'number') return '--';
+    return `${v.toFixed(3)} SOL`;
+  }, [dashboard]);
+
+  const tasksCompleted = useMemo(() => {
+    const v = dashboard?.finalizedRounds;
+    if (typeof v !== 'number') return '--';
+    return v.toLocaleString();
+  }, [dashboard]);
+
+  const recentActivity = useMemo(() => {
+    return (dashboard?.recentActivity as any[] | undefined) ?? [];
+  }, [dashboard]);
 
   const handleStake = async () => {
     if (!program || !wallet || !stakeAmount) return;
@@ -117,12 +173,16 @@ const ValidatorDashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Validator Node</h2>
-          <p className="text-muted-foreground">Node ID: 0x71...3A9 • Region: Asia/Kolkata</p>
+          <p className="text-muted-foreground">Node ID: {nodeIdShort} • Region: {regionText}</p>
         </div>
         <div className="flex gap-2 items-center">
           <WalletMultiButton className="!bg-primary !h-10" />
-          <Badge variant="outline" className="text-green-600 border-green-600 px-4 py-1">Node Active</Badge>
-          <Button variant="destructive">Stop Node</Button>
+          {isNodeActive ? (
+            <Badge variant="outline" className="text-green-600 border-green-600 px-4 py-1">Node Active</Badge>
+          ) : (
+            <Badge variant="outline" className="text-yellow-600 border-yellow-600 px-4 py-1">Node Inactive</Badge>
+          )}
+          <Button variant="destructive" disabled>Stop Node</Button>
         </div>
       </div>
 
@@ -163,8 +223,8 @@ const ValidatorDashboard = () => {
             <Coins className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">14.2 SOL</div>
-            <p className="text-xs text-slate-400">≈ $2,400 USD</p>
+            <div className="text-2xl font-bold">{totalEarningsSol}</div>
+            <p className="text-xs text-slate-400">0.001 SOL per finalized round</p>
           </CardContent>
         </Card>
         
@@ -174,19 +234,8 @@ const ValidatorDashboard = () => {
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8,432</div>
-            <p className="text-xs text-muted-foreground">Successful validations</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reputation Score</CardTitle>
-            <Server className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">98/100</div>
-            <p className="text-xs text-muted-foreground">High reliability tier</p>
+            <div className="text-2xl font-bold">{tasksCompleted}</div>
+            <p className="text-xs text-muted-foreground">Finalized rounds</p>
           </CardContent>
         </Card>
 
@@ -210,23 +259,43 @@ const ValidatorDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                <div className="flex items-center gap-4">
-                  <div className="bg-muted p-2 rounded-full">
-                    <Activity className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium leading-none">Validated: example-service-{i}.com</p>
-                    <p className="text-xs text-muted-foreground mt-1">Task ID: #882{i} • Type: SSL_CHECK</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-bold text-green-600">+0.002 SOL</span>
-                  <p className="text-xs text-muted-foreground">2s ago</p>
-                </div>
+            {recentActivity.length === 0 ? (
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                No recent activity yet.
               </div>
-            ))}
+            ) : recentActivity.map((a) => {
+              const ts = new Date(a.roundTimestamp);
+              const timeText = Number.isNaN(ts.getTime()) ? '' : ts.toLocaleString();
+              const earningText = a.isFinalized ? `+${a.earningSol.toFixed(3)} SOL` : 'Pending';
+              const earningClass = a.isFinalized ? 'text-green-600' : 'text-muted-foreground';
+              const statusBadge =
+                a.status === 'UP'
+                  ? <Badge className="bg-green-500 hover:bg-green-600">UP</Badge>
+                  : a.status === 'DOWN'
+                  ? <Badge variant="destructive">DOWN</Badge>
+                  : <Badge className="bg-amber-500 hover:bg-amber-600">UNKNOWN</Badge>
+
+              return (
+                <div key={`${a.websiteId}-${a.roundTimestamp}`} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-muted p-2 rounded-full">
+                      <Activity className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium leading-none">Validated: {a.websiteUrl}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {statusBadge} <span className="ml-2">Latency: {Math.round(a.responseTimeMs)}ms</span> <span className="ml-2">•</span> <span className="ml-2">{timeText}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-sm font-bold ${earningClass}`}>{earningText}</span>
+                    <p className="text-xs text-muted-foreground">{a.isFinalized ? 'Finalized' : 'Awaiting RoundResult'}</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </CardContent>
       </Card>
