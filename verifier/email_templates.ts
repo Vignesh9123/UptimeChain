@@ -25,13 +25,38 @@ function formatIncidentDatetime(value: IncidentDatetime) {
 export function websiteDownEmailTemplate(
   userName: string,
   websiteName: string,
-  incidentDatetime: IncidentDatetime
+  incidentDatetime: IncidentDatetime,
+  downContinents?: string[]
 ) {
   const safeUserName = escapeHtml(userName?.trim() || "there");
   const safeWebsiteName = escapeHtml(websiteName?.trim() || "your website");
   const safeWhen = escapeHtml(formatIncidentDatetime(incidentDatetime));
 
   const preheader = `Incident detected: ${safeWebsiteName} appears to be down.`;
+
+  let outageScopeMsg = "";
+  if (Array.isArray(downContinents) && downContinents.length) {
+    const continentString = downContinents
+      .map(cont => escapeHtml(cont))
+      .join(", ");
+    outageScopeMsg = `
+      <div style="font-size:14px;color:#eab308;font-weight:600;margin-bottom:14px;">
+        Outage detected in: <span style="color:#fff1a8;">${continentString}</span>
+      </div>
+      <div style="font-size:13px;line-height:1.6;color:#a7b0c2;margin-bottom:14px;">
+        UptimeChain monitoring detected the website is unreachable from the regions listed above. Other regions may still see normal operation, but action is recommended.
+      </div>
+    `;
+  } else {
+    outageScopeMsg = `
+      <div style="font-size:14px;color:#eab308;font-weight:600;margin-bottom:14px;">
+        Down globally: All monitored regions are reporting downtime.
+      </div>
+      <div style="font-size:13px;line-height:1.6;color:#a7b0c2;margin-bottom:14px;">
+        UptimeChain monitoring detected an outage from all available regions.
+      </div>
+    `;
+  }
 
   return `<!doctype html>
 <html lang="en">
@@ -63,6 +88,8 @@ export function websiteDownEmailTemplate(
                   <div style="font-size:22px;line-height:1.25;font-weight:800;margin:0 0 12px 0;color:#ffffff;">
                     ${safeWebsiteName} may be down
                   </div>
+
+                  ${outageScopeMsg}
 
                   <div style="font-size:14px;line-height:1.6;color:#d6dbe6;margin-bottom:14px;">
                     Hi ${safeUserName}, we detected a potential outage for <strong style="color:#ffffff;">${safeWebsiteName}</strong>.
@@ -108,4 +135,5 @@ export function websiteDownEmailTemplate(
   </body>
 </html>`;
 }
+
 

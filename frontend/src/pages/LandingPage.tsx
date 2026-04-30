@@ -5,8 +5,6 @@ import { MagicCard } from '@/components/ui/magic-card';
 import { Particles } from '@/components/ui/particles';
 import {useTheme} from '@/components/theme-provider'
 import GlobeComponent from '@/components/ReactGlobe';
-import { axiosClient, getRandomMarkersFromData } from '@/config';
-import { useEffect, useState } from 'react';
 
 const LandingPage = () => {
     const {theme} = useTheme()

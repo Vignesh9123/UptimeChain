@@ -262,6 +262,83 @@ type ValidatorSubmission = {
         console.log("Error sending email", error)
       } 
     }
+    else{
+      const continentWiseStatus: Record<string, "UP" | "DOWN"> = {};
+
+      const continentSubmissions: Record<string, string[]> = {};
+      for (const submission of round.submissions?.values() ?? []) {
+        const continent = submission?.continent ?? "";
+        const status = submission?.data?.status ?? "";
+        if (!continentSubmissions[continent]) {
+          continentSubmissions[continent] = [];
+        }
+        continentSubmissions[continent]!.push(status);
+      }
+
+      for (const [continent, statuses] of Object.entries(continentSubmissions)) {
+        const downCount = statuses.filter(status => status?.toLowerCase() === "down").length;
+        const upCount = statuses.filter(status => status?.toLowerCase() === "up").length;
+        if (downCount > upCount) {
+          continentWiseStatus[continent] = "DOWN";
+        } else {
+          continentWiseStatus[continent] = "UP";
+        }
+      }
+      
+      const downContinents = Object.keys(continentWiseStatus).filter(continent => continentWiseStatus[continent] === "DOWN");
+      if (downContinents.length > 0) {
+        console.log("Down continents", downContinents)
+        try{
+          const website = await prisma.website.findUnique({
+            where: {
+              url: String(round.targetUrl),
+            },
+          })
+          if(!website) {
+            console.log("Website not found")
+            return;
+          }
+          const users = await prisma.user.findMany({
+            where: {
+              subscriptions: {
+                some: {
+                  websiteId: website.id
+                },
+              }
+            },
+            include: {
+              subscriptions: {
+                where: {
+                  websiteId: website.id
+                }
+              }
+            }
+          })
+          console.log("Users to send mail",users)
+          for(const user of users){
+            const email = user.email
+            const subscription = user.subscriptions[0]
+            if(!subscription){
+              console.log("Subscription not found")
+              continue;
+            }
+            if(!email){
+              console.log("Email not found")
+              continue;
+            }
+            const body = websiteDownEmailTemplate(user.name, subscription.name, new Date(round.roundTimestamp), downContinents)
+            await sendEmail({
+              email,
+              subject: `Website ${subscription.name} is down`,
+              message: body
+            })
+          }
+        }
+        catch(error){
+          console.log("Error sending email", error)
+        }
+      }
+    }
     rounds.delete(roundKey(round.targetUrl, round.roundTimestamp));
   }    
 
