@@ -10,6 +10,11 @@ const stakeValidatorSchema = z.object({
 const registerValidatorPubkeySchema = z.object({
     pubkey: z.string().min(1),
 })
+
+const registerValidatorRegionSchema = z.object({
+    continent: z.string().min(1),
+    pubkey: z.string().min(1),
+})
 const registerValidatorOnChain = async (validatorPubkey: string) => {
     try {
         if(!program.methods.initializeValidator){
@@ -188,3 +193,31 @@ export const stakeValidator = async (req: Request, res: Response) => {
         return res.status(500).json({message: "Internal server error"})
     }
 }
+
+export const registerValidatorRegion = async(req: Request, res: Response) => {
+    try {
+        const cleanedBody = registerValidatorRegionSchema.parse(req.body);
+        const user = await prisma.user.findUnique({
+            where: {
+                wallet_pubkey: cleanedBody.pubkey,
+                role:"VALIDATOR"
+            }
+        })
+        if(!user) {
+            return res.status(404).json({message: "Validator not found"})
+        }
+        await prisma.validator.update({
+            where: {
+                user_id: user.id
+            },
+            data: {
+                continent: cleanedBody.continent
+            }
+        })
+        return res.status(200).json({message: "Validator region registered successfully"})
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({message: "Internal server error"})
+    }
+}
+    

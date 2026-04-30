@@ -7,6 +7,7 @@ const app = express()
 
 const QUEUE_URL = process.env.QUEUE_URL
 const VERIFIER_URL = process.env.VERIFIER_URL
+const BACKEND_URL = process.env.BACKEND_URL
 if(!VERIFIER_URL || !QUEUE_URL) throw new Error("Missing environment variables")
 app.use(express.json())
 app.set("trust proxy", true)
@@ -21,6 +22,10 @@ const taskSchema = z.object({
     
 })
 
+const registerValidatorPubkeySchema = z.object({
+    pubkey: z.string().min(1),
+})
+
 const resultSchema = z.object({
     data: z.object({
         targetUrl: z.url(),
@@ -31,6 +36,44 @@ const resultSchema = z.object({
     }),
     signature: z.string(),
     validatorPubkey: z.string()
+})
+
+app.post("/api/register-validator-region", async (req, res)=>{
+    try {
+      const validatorIp = req.ip?.endsWith("127.0.0.1") || req.ip?.endsWith("::1") ? undefined : req.ip
+      console.log("Val", validatorIp)
+      const resp = await fetch(validatorIp ? `http://ip-api.com/json/${validatorIp}?fields=3207167` : `http://ip-api.com/json?fields=3207167`)
+      const data = await resp.json() as any
+      console.log("Validator IP", data)
+      const continent = data.continent
+      console.log("Continent", continent)
+      const {body} = req
+      const cleanedBody = registerValidatorPubkeySchema.parse(body)
+      const resultToSend = {
+        continent,
+        pubkey: cleanedBody.pubkey
+      }
+      await fetch(`${BACKEND_URL}/api/v1/validators/register-region`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(resultToSend),
+      })
+      return res
+      .status(200)
+      .json({
+          message:"Validator registered successfully"
+      })
+    }
+    catch(e){
+        console.log("Error while registering region", e)
+        return res
+        .status(500)
+        .json({
+            message:"Validator registration failed"
+        })
+    }
 })
 
 app.post("/api/push-task", async (req, res)=>{

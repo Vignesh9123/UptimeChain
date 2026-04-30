@@ -43,6 +43,20 @@ async function latencyAndUptimeCheck(targetUrl: string){
     return result
 }
 
+async function registerRegion(){
+    try{
+        console.log("Registering validator region")
+        
+        await queueAxios.post("/register-validator-region", {
+            pubkey: PUBLIC_KEY
+        })
+        console.log("Validator region registered successfully")
+    }
+    catch(e){
+        console.log("Error while registering region", e)
+    }
+}
+
 async function sslCertExpiryCheck(targetUrl: string){
     const { hostname } = new URL(targetUrl)
     const output = await $`echo | openssl s_client -servername ${hostname} -connect ${hostname}:443 2>/dev/null | openssl x509 -noout -enddate`.text()
@@ -92,5 +106,6 @@ async function main(){
         console.log("Error in main", error)
     }
 }
+await registerRegion()
 main()
 setInterval(main, 20 * 1000)
