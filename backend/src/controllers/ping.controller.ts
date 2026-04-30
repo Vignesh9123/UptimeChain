@@ -2,6 +2,171 @@ import { prisma } from "@uptime-chain/database";
 import type { Request, Response } from "express";
 import * as z from "zod";
 
+type UptimeHistoryPoint = { name: string; uptime: number | null }
+type DashboardAlert = {
+    type: "DOWNTIME" | "HIGH_LATENCY" | "UNKNOWN"
+    severity: "critical" | "warning" | "info"
+    websiteId: string
+    websiteUrl: string
+    message: string
+    responseTimeMs?: number
+    createdAt: string
+}
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+const addDays = (d: Date, days: number) => {
+    const copy = new Date(d)
+    copy.setDate(copy.getDate() + days)
+    return copy
+}
+
+const weekdayShort = (d: Date) => d.toLocaleDateString("en-US", { weekday: "short" })
+
+const computeUptimePct = (rows: Array<{ status: string }>) => {
+    const considered = rows.filter((r) => r.status === "UP" || r.status === "DOWN")
+    if (considered.length === 0) return null
+    const up = considered.filter((r) => r.status === "UP").length
+    return (up / considered.length) * 100
+}
+
+export const getDashboardOverviewForUser = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id
+        const subs = await prisma.subscription.findMany({
+            where: { userId, is_active: true },
+            distinct: ["websiteId"],
+            select: { websiteId: true }
+        })
+        const websiteIds = subs.map((s) => s.websiteId)
+
+        if (websiteIds.length === 0) {
+            return res.status(200).json({
+                data: {
+                    overallUptimePct: null,
+                    overallUptimeDeltaPct: null,
+                    globalLatencyMs: null,
+                    uptimeHistory7d: [] as UptimeHistoryPoint[],
+                    alerts: [] as DashboardAlert[],
+                    websitesCount: 0,
+                }
+            })
+        }
+
+        const now = new Date()
+        const since60d = addDays(now, -60)
+        const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
+        const results60d = await prisma.roundResult.findMany({
+            where: {
+                websiteId: { in: websiteIds },
+                createdAt: { gte: since60d },
+            },
+            select: {
+                status: true,
+                responseTime: true,
+                createdAt: true,
+            },
+            orderBy: { createdAt: "asc" }
+        })
+
+        const since30d = addDays(now, -30)
+        const prev60to30 = addDays(now, -60)
+
+        const current30 = results60d.filter((r) => r.createdAt >= since30d)
+        const previous30 = results60d.filter((r) => r.createdAt >= prev60to30 && r.createdAt < since30d)
+
+        const overallUptimePct = computeUptimePct(current30)
+        const previousUptimePct = computeUptimePct(previous30)
+        const overallUptimeDeltaPct =
+            overallUptimePct === null || previousUptimePct === null ? null : overallUptimePct - previousUptimePct
+
+        const latencyRows = results60d.filter((r) => r.createdAt >= since24h && r.status === "UP")
+        const globalLatencyMs =
+            latencyRows.length === 0 ? null : latencyRows.reduce((acc, r) => acc + (r.responseTime ?? 0), 0) / latencyRows.length
+
+        const todayStart = startOfDay(now)
+        const start7d = addDays(todayStart, -6) // include today
+        const historyRows = results60d.filter((r) => r.createdAt >= start7d)
+
+        const uptimeHistory7d: UptimeHistoryPoint[] = []
+        for (let i = 0; i < 7; i++) {
+            const dayStart = addDays(start7d, i)
+            const dayEnd = addDays(dayStart, 1)
+            const dayRows = historyRows.filter((r) => r.createdAt >= dayStart && r.createdAt < dayEnd)
+            uptimeHistory7d.push({
+                name: weekdayShort(dayStart),
+                uptime: computeUptimePct(dayRows),
+            })
+        }
+
+        const roundResults = await prisma.roundResult.findMany({
+            where: { websiteId: { in: websiteIds } },
+            include: { website: true },
+            orderBy: { createdAt: "desc" },
+            take: Math.min(websiteIds.length * 5, 500),
+        })
+
+        const latestByWebsite = new Map<string, (typeof roundResults)[number]>()
+        for (const r of roundResults) {
+            if (!latestByWebsite.has(r.websiteId)) latestByWebsite.set(r.websiteId, r)
+            if (latestByWebsite.size === websiteIds.length) break
+        }
+
+        const HIGH_LATENCY_MS = 1000
+        const alerts: DashboardAlert[] = []
+        for (const websiteId of websiteIds) {
+            const r = latestByWebsite.get(websiteId)
+            if (!r) continue
+
+            if (r.status === "DOWN") {
+                alerts.push({
+                    type: "DOWNTIME",
+                    severity: "critical",
+                    websiteId,
+                    websiteUrl: r.website.url,
+                    message: "Website is currently down.",
+                    createdAt: r.createdAt.toISOString(),
+                })
+            } else if (r.status === "UNKNOWN") {
+                alerts.push({
+                    type: "UNKNOWN",
+                    severity: "info",
+                    websiteId,
+                    websiteUrl: r.website.url,
+                    message: "Website status is unknown (no recent successful check).",
+                    createdAt: r.createdAt.toISOString(),
+                })
+            } else if (r.status === "UP" && typeof r.responseTime === "number" && r.responseTime > HIGH_LATENCY_MS) {
+                alerts.push({
+                    type: "HIGH_LATENCY",
+                    severity: "warning",
+                    websiteId,
+                    websiteUrl: r.website.url,
+                    message: `High latency detected (${Math.round(r.responseTime)}ms).`,
+                    responseTimeMs: r.responseTime,
+                    createdAt: r.createdAt.toISOString(),
+                })
+            }
+        }
+
+        alerts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+        return res.status(200).json({
+            data: {
+                overallUptimePct,
+                overallUptimeDeltaPct,
+                globalLatencyMs,
+                uptimeHistory7d,
+                alerts: alerts.slice(0, 5),
+                websitesCount: websiteIds.length,
+            }
+        })
+    } catch (error) {
+        return res.status(500).json({ error })
+    }
+}
+
 export const getLatestResultsForUser = async (req: Request, res: Response) => {
     try {
         const userId = req.user.id

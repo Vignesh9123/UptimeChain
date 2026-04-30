@@ -10,25 +10,17 @@ import { Input } from '@/components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useUserStore } from '@/store/userStore';
-import { getLatestResultsForUser, getUserWebsites, type UserWebsite } from '@/services/website.service';
+import { getDashboardOverviewForUser, getLatestResultsForUser, getUserWebsites, type DashboardOverview, type UserWebsite } from '@/services/website.service';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import idl from '../idl/contract.json';
-const data = [
-  { name: 'Mon', uptime: 99.9 },
-  { name: 'Tue', uptime: 100 },
-  { name: 'Wed', uptime: 99.8 },
-  { name: 'Thu', uptime: 100 },
-  { name: 'Fri', uptime: 100 },
-  { name: 'Sat', uptime: 99.5 },
-  { name: 'Sun', uptime: 100 },
-];
 
 const ClientDashboard = () => {
   const [addWebsiteDialogOpen, setAddWebsiteDialogOpen] = useState(false);
   const [websites, setWebsites] = useState<UserWebsite[]>([]);
   const [latestResults, setLatestResults] = useState<any[]>([]);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [isLoadingWebsites, setIsLoadingWebsites] = useState(true);
   const { isAuthenticated, isLoading } = useUserStore();
   const { connection } = useConnection();
@@ -108,6 +100,14 @@ const ClientDashboard = () => {
       })
   }
 
+  const fetchOverview = () => {
+    getDashboardOverviewForUser()
+      .then(setOverview)
+      .catch((err) => {
+        console.error("Failed to fetch dashboard overview:", err);
+      })
+  }
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate('/login');
@@ -115,6 +115,7 @@ const ClientDashboard = () => {
 
     if (isAuthenticated) {
       fetchWebsites();
+      fetchOverview();
     }
   }, [isLoading, isAuthenticated]);
 
@@ -125,6 +126,43 @@ const ClientDashboard = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      fetchOverview();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated])
+
+  const overallUptimeText = useMemo(() => {
+    if (!overview || overview.overallUptimePct === null) return '--'
+    return `${overview.overallUptimePct.toFixed(2)}%`
+  }, [overview])
+
+  const overallUptimeDeltaText = useMemo(() => {
+    if (!overview || overview.overallUptimeDeltaPct === null) return '—'
+    const sign = overview.overallUptimeDeltaPct >= 0 ? '+' : ''
+    return `${sign}${overview.overallUptimeDeltaPct.toFixed(2)}% from last 30 days`
+  }, [overview])
+
+  const globalLatencyText = useMemo(() => {
+    if (!overview || overview.globalLatencyMs === null) return '--'
+    return `${Math.round(overview.globalLatencyMs)}ms`
+  }, [overview])
+
+  const uptimeHistoryData = useMemo(() => {
+    return (overview?.uptimeHistory7d ?? []).map((p) => ({
+      name: p.name,
+      uptime: p.uptime ?? 0,
+      hasData: p.uptime !== null,
+    }))
+  }, [overview])
+
+  const alerts = useMemo(() => {
+    return overview?.alerts ?? []
+  }, [overview])
+
   if (!isLoading && isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -183,12 +221,12 @@ const ClientDashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overall Uptime</CardTitle>  {/*TODO: remove dummy data */}
+              <CardTitle className="text-sm font-medium">Overall Uptime</CardTitle>
               <Activity className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">99.92%</div>
-              <p className="text-xs text-muted-foreground">+0.1% from last month</p>
+              <div className="text-2xl font-bold">{overallUptimeText}</div>
+              <p className="text-xs text-muted-foreground">{overallUptimeDeltaText}</p>
             </CardContent>
           </Card>
 
@@ -228,26 +266,40 @@ const ClientDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex items-start gap-2 text-sm">
-                  <ShieldCheck className="h-4 w-4 text-yellow-500 mt-0.5" />
-                  <span className="leading-tight">SSL for <strong>api.example.com</strong> expires in 3 days.</span>
-                </div>
-                <div className="flex items-start gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-blue-500 mt-0.5" />
-                  <span className="leading-tight">High latency detected on <strong>eu-west</strong> node.</span>
-                </div>
+                {alerts.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No active alerts.</div>
+                ) : (
+                  alerts.map((a) => {
+                    const Icon = a.type === 'DOWNTIME' ? AlertTriangle : a.type === 'HIGH_LATENCY' ? Clock : ShieldCheck
+                    const iconColor =
+                      a.severity === 'critical'
+                        ? 'text-red-500'
+                        : a.severity === 'warning'
+                        ? 'text-yellow-500'
+                        : 'text-blue-500'
+
+                    return (
+                      <div key={`${a.type}-${a.websiteId}-${a.createdAt}`} className="flex items-start gap-2 text-sm">
+                        <Icon className={`h-4 w-4 ${iconColor} mt-0.5`} />
+                        <span className="leading-tight">
+                          <strong>{a.websiteUrl}</strong>: {a.message}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Global Latency</CardTitle> {/*TODO: remove dummy data */}
+              <CardTitle className="text-sm font-medium">Global Latency</CardTitle>
               <Clock className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">142ms</div>
-              <p className="text-xs text-muted-foreground">Average across all regions</p>
+              <div className="text-2xl font-bold">{globalLatencyText}</div>
+              <p className="text-xs text-muted-foreground">Average across all regions (last 24h)</p>
             </CardContent>
           </Card>
         </div>
@@ -255,17 +307,21 @@ const ClientDashboard = () => {
         <div className="grid gap-4 md:grid-cols-7">
           <Card className="col-span-4">
             <CardHeader>
-              <CardTitle>Uptime History (Last 7 Days)</CardTitle>  {/*TODO: remove dummy data */}
+              <CardTitle>Uptime History (Last 7 Days)</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
               <div className="h-[200px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data}>
+                  <BarChart data={uptimeHistoryData}>
                     <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} domain={[90, 100]} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
                     <Tooltip
                       cursor={{ fill: 'transparent' }}
                       contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', color: 'black' }}
+                      formatter={(value: any, _name: any, props: any) => {
+                        if (!props?.payload?.hasData) return ['--', 'Uptime']
+                        return [`${Number(value).toFixed(2)}%`, 'Uptime']
+                      }}
                     />
                     <Bar dataKey="uptime" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
                   </BarChart>

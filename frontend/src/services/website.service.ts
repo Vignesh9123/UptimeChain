@@ -46,6 +46,28 @@ export const getLatestResultsForUser = async () => {
     return response.data.data;
 }
 
+export type DashboardOverview = {
+    overallUptimePct: number | null;
+    overallUptimeDeltaPct: number | null;
+    globalLatencyMs: number | null;
+    uptimeHistory7d: Array<{ name: string; uptime: number | null }>;
+    alerts: Array<{
+        type: 'DOWNTIME' | 'HIGH_LATENCY' | 'UNKNOWN';
+        severity: 'critical' | 'warning' | 'info';
+        websiteId: string;
+        websiteUrl: string;
+        message: string;
+        responseTimeMs?: number;
+        createdAt: string;
+    }>;
+    websitesCount: number;
+}
+
+export const getDashboardOverviewForUser = async () => {
+    const response = await axiosClient.get<{ data: DashboardOverview }>('/ping/overview');
+    return response.data.data;
+}
+
 export const getWebsiteById = async (subscriptionId: string) => {
     const response = await axiosClient.get<{ message: string, data: UserWebsite }>(`/websites/${subscriptionId}`);
     return response.data.data;
