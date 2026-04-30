@@ -4,9 +4,13 @@ import HeroSectionOne from '@/components/hero-section-demo-1';
 import { MagicCard } from '@/components/ui/magic-card';
 import { Particles } from '@/components/ui/particles';
 import {useTheme} from '@/components/theme-provider'
+import GlobeComponent from '@/components/ReactGlobe';
+import { axiosClient, getRandomMarkersFromData } from '@/config';
+import { useEffect, useState } from 'react';
 
 const LandingPage = () => {
     const {theme} = useTheme()
+    
   return (
     <div className="">
       {/* Hero Section */}
@@ -79,6 +83,7 @@ const LandingPage = () => {
           </CardContent>
         </MagicCard>
       </div>
+      <GlobeComponent />
     </div>
   );
 };

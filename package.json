@@ -3,7 +3,6 @@
     "private": true,
     "workspaces": [
         "backend",
-        "frontend",
         "hub",
         "verifier",
         "queue-api",
