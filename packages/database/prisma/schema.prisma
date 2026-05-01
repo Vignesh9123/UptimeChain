@@ -25,6 +25,8 @@ model User {
   password String?
   role UserRole
   wallet_pubkey String? @unique
+  is_verified Boolean @default(false)
+  token String @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   subscriptions Subscription[]

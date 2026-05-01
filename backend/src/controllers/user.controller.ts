@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { env } from "../config"
 import { UserRole } from "@uptime-chain/database/"
+import { sendEmail } from "../utils/sendMail"
 
 
 const loginSchema = z.object({
@@ -31,6 +32,37 @@ const registerSchema = z.object({
     role: z.enum(UserRole).default(UserRole.CLIENT)
     
 })
+
+const verifyOtpSchema = z.object({
+    email: z.email(),
+    token: z.string().regex(/^\d{6}$/, "Token must be a 6 digit code"),
+})
+
+const sendOtpSchema = z.object({
+    email: z.email(),
+})
+
+function generateSixDigitToken() {
+    const token = Math.floor(100000 + Math.random() * 900000).toString()
+    console.log("Token is", token)
+    return token
+}
+
+async function sendVerificationOtpEmail(email: string, token: string) {
+    const html = `
+      <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto; line-height: 1.6">
+        <h2 style="margin: 0 0 12px 0">Verify your email</h2>
+        <p style="margin: 0 0 12px 0">Use this code to verify your UptimeChain account:</p>
+        <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; margin: 10px 0 16px 0">${token}</div>
+        <p style="margin: 0; color: #666">If you didn’t request this, you can ignore this email.</p>
+      </div>
+    `
+    await sendEmail({
+        email,
+        subject: "UptimeChain verification code",
+        message: html,
+    })
+}
 
 export const getCurrentUser = async (req: Request, res: Response) => {
     try {
@@ -76,6 +108,25 @@ export const loginUser = async (req: Request, res: Response) => {
         if(!isPasswordMatching) {
             return res.status(401).json({message: "Invalid credentials"})
         }
+
+        if (!user.is_verified) {
+            const token = generateSixDigitToken()
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { token },
+            })
+            try {
+                await sendVerificationOtpEmail(user.email, token)
+            } catch (e) {
+                console.error("Failed to send verification email", e)
+            }
+            return res.status(403).json({
+                message: "Email not verified. OTP sent to your email.",
+                requires_verification: true,
+                email: user.email,
+            })
+        }
+
         const token = jwt.sign({id: user.id}, env.JWT_SECRET_KEY, {expiresIn: "1d"});
         user.password = null;
         return res.status(200).json({message: "Login successful", token, user:{
@@ -100,12 +151,14 @@ export const registerUser = async (req: Request, res: Response) => {
             return res.status(409).json({message: "User already exists"})
         }
         const hashedPassword = await bcrypt.hash(cleanedBody.password, 10);
+        const otp = generateSixDigitToken()
         const user = await prisma.user.create({
             data: {
                 email: cleanedBody.email,
                 name: cleanedBody.name,
                 password: hashedPassword,
-                role: cleanedBody.role
+                role: cleanedBody.role,
+                token: otp
             }
         })
         if(cleanedBody.role === UserRole.VALIDATOR){
@@ -115,14 +168,95 @@ export const registerUser = async (req: Request, res: Response) => {
                 }
             })
         }
+        try {
+            await sendVerificationOtpEmail(user.email, otp)
+        } catch (e) {
+            console.error("Failed to send verification email", e)
+        }
         user.password = null;
-        return res.status(201).json({message: "User created", user:{
-            ...user,
-            wallet_balance : user.wallet_balance.toString()
-        }})   
+        return res.status(201).json({
+            message: "User created. Verification OTP sent to your email.",
+            requires_verification: true,
+            email: user.email,
+            user:{
+                ...user,
+                wallet_balance : user.wallet_balance.toString()
+            }
+        })
     }
     catch (error) {
         console.log(error)
         return res.status(500).json({message: (error as any)?.message || "Something went wrong"})
+    }
+}
+
+export const verifyOtp = async (req: Request, res: Response) => {
+    try {
+        const cleanedBody = verifyOtpSchema.parse(req.body)
+        const user = await prisma.user.findUnique({
+            where: { email: cleanedBody.email },
+        })
+        if (!user) {
+            return res.status(404).json({ message: "User not found" })
+        }
+        if (user.is_verified) {
+            const jwtToken = jwt.sign({ id: user.id }, env.JWT_SECRET_KEY, { expiresIn: "1d" })
+            user.password = null
+            return res.status(200).json({
+                message: "Already verified",
+                token: jwtToken,
+                user: {
+                    ...user,
+                    wallet_balance: user.wallet_balance.toString(),
+                },
+            })
+        }
+        if (user.token !== cleanedBody.token) {
+            return res.status(400).json({ message: "Invalid token" })
+        }
+        const updated = await prisma.user.update({
+            where: { id: user.id },
+            data: { is_verified: true, token: "" },
+        })
+        const jwtToken = jwt.sign({ id: updated.id }, env.JWT_SECRET_KEY, { expiresIn: "1d" })
+        updated.password = null
+        return res.status(200).json({
+            message: "Email verified",
+            token: jwtToken,
+            user: {
+                ...updated,
+                wallet_balance: updated.wallet_balance.toString(),
+            },
+        })
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
+    }
+}
+
+export const sendOtp = async (req: Request, res: Response) => {
+    try {
+        const cleanedBody = sendOtpSchema.parse(req.body)
+        const user = await prisma.user.findUnique({
+            where: { email: cleanedBody.email },
+        })
+        if (!user) {
+            return res.status(404).json({ message: "User not found" })
+        }
+        if (user.is_verified) {
+            return res.status(200).json({ message: "User already verified" })
+        }
+        const otp = generateSixDigitToken()
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { token: otp },
+        })
+        try {
+            await sendVerificationOtpEmail(user.email, otp)
+        } catch (e) {
+            console.error("Failed to send verification email", e)
+        }
+        return res.status(200).json({ message: "OTP sent" })
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
     }
 }

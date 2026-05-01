@@ -344,6 +344,12 @@ function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, ro
         navigate(loggedInUser?.role.toLowerCase() === 'client' ? '/client' : '/validator');
       }
       catch (error: any) {
+        const requiresVerification = error?.response?.data?.requires_verification;
+        const otpEmail = error?.response?.data?.email || email;
+        if (requiresVerification && otpEmail) {
+          navigate(`/otp?email=${encodeURIComponent(otpEmail)}&after=dashboard`);
+          return;
+        }
         console.error(error);
       }
     }
@@ -353,7 +359,11 @@ function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, ro
         return;
       }
       try {
-        await register({ email, password, name, role });
+        const res = await register({ email, password, name, role });
+        if (res?.requires_verification) {
+          navigate(`/otp?email=${encodeURIComponent(res.email || email)}&after=login`);
+          return;
+        }
         navigate('/login');
       }
       catch (error: any) {
@@ -701,18 +711,6 @@ function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, ro
               {isLoading ? "Signing in..." : registerPage ? "Sign up" : "Log in"}
             </Button>
           </form>
-
-          <div className="mt-6">
-            <Button
-              variant="outline"
-              className="w-full h-12 bg-background border-border/60 hover:bg-accent"
-              type="button"
-            >
-              <Mail className="mr-2 size-5" />
-              {registerPage ? "Sign up with Google" : "Log in with Google"}
-            </Button>
-          </div>
-
           {registerPage ?
             <div className="text-center text-sm text-muted-foreground mt-8">
               Already have an account?{" "}

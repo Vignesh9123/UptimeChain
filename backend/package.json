@@ -12,7 +12,8 @@
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
-    "@types/jsonwebtoken": "^9.0.10"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/nodemailer": "^8.0.0"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -25,7 +26,9 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.4.1",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^8.0.7",
     "zod": "^4.1.13"
   }
 }

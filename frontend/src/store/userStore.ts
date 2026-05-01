@@ -16,7 +16,9 @@ interface UserState {
     isLoading: boolean;
     error: string | null;
     login: (credentials: any) => Promise<User>;
-    register: (data: any) => Promise<void>;
+    register: (data: any) => Promise<any>;
+    verifyOtp: (payload: { email: string; token: string }) => Promise<User>;
+    sendOtp: (email: string) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
     clearError: () => void;
@@ -47,10 +49,38 @@ export const useUserStore = create<UserState>((set) => ({
     register: async (data) => {
         set({ isLoading: true, error: null });
         try {
-            await axiosClient.post('/users/register', data);
+            const response = await axiosClient.post('/users/register', data);
             set({ isLoading: false });
+            return response.data
         } catch (error: any) {
             const message = error.response?.data?.message || 'Registration failed';
+            set({ error: message, isLoading: false });
+            throw error;
+        }
+    },
+
+    verifyOtp: async (payload) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await axiosClient.post('/users/verify-otp', payload);
+            const { token, user } = response.data;
+            localStorage.setItem('token', token);
+            set({ user, isAuthenticated: true, isLoading: false });
+            return user
+        } catch (error: any) {
+            const message = error.response?.data?.message || 'OTP verification failed';
+            set({ error: message, isLoading: false });
+            throw error;
+        }
+    },
+
+    sendOtp: async (email) => {
+        set({ isLoading: true, error: null });
+        try {
+            await axiosClient.post('/users/send-otp', { email });
+            set({ isLoading: false });
+        } catch (error: any) {
+            const message = error.response?.data?.message || 'Failed to send OTP';
             set({ error: message, isLoading: false });
             throw error;
         }
