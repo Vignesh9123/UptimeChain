@@ -132,3 +132,158 @@ export const getUserWebsite = async (req: Request, res: Response) => {
         return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
     }
 }
+
+export const deactivateSubscription = async (req: Request, res: Response) => {
+    try {
+        const subscriptionId = req.params.id as string;
+
+        const updated = await prisma.$transaction(async (tx) => {
+            const subscription = await tx.subscription.findFirst({
+                where: {
+                    id: subscriptionId,
+                    userId: req.user.id,
+                },
+                select: {
+                    id: true,
+                    websiteId: true,
+                    is_active: true,
+                },
+            });
+
+            if (!subscription) {
+                return null;
+            }
+
+            if (subscription.is_active) {
+                await tx.subscription.update({
+                    where: { id: subscription.id },
+                    data: { is_active: false },
+                });
+            }
+
+            const activeSubs = await tx.subscription.findMany({
+                where: {
+                    websiteId: subscription.websiteId,
+                    is_active: true,
+                },
+                select: { check_interval: true },
+            });
+
+            if (activeSubs.length === 0) {
+                await tx.websiteSchedule.deleteMany({
+                    where: { websiteId: subscription.websiteId },
+                });
+                return { websiteId: subscription.websiteId, schedule: null };
+            }
+
+            const minIntervalSeconds = Math.min(...activeSubs.map((s) => s.check_interval));
+
+            const schedule = await tx.websiteSchedule.findFirst({
+                where: { websiteId: subscription.websiteId },
+                select: { id: true, interval_seconds: true },
+            });
+
+            if (schedule && minIntervalSeconds < schedule.interval_seconds) {
+                await tx.websiteSchedule.update({
+                    where: { id: schedule.id },
+                    data: {
+                        interval_seconds: minIntervalSeconds,
+                        next_run: new Date(Date.now() + minIntervalSeconds * 1000),
+                    },
+                });
+            }
+
+            return { websiteId: subscription.websiteId, schedule: { minIntervalSeconds } };
+        });
+
+        if (!updated) {
+            return res.status(404).json({ message: "User website not found" });
+        }
+
+        return res.status(200).json({ message: "Subscription deactivated", data: updated });
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" });
+    }
+}
+
+export const activateSubscription = async (req: Request, res: Response) => {
+    try {
+        const subscriptionId = req.params.id as string;
+
+        const updated = await prisma.$transaction(async (tx) => {
+            const subscription = await tx.subscription.findFirst({
+                where: {
+                    id: subscriptionId,
+                    userId: req.user.id,
+                },
+                select: {
+                    id: true,
+                    websiteId: true,
+                    is_active: true,
+                },
+            });
+
+            if (!subscription) {
+                return null;
+            }
+
+            if (!subscription.is_active) {
+                await tx.subscription.update({
+                    where: { id: subscription.id },
+                    data: { is_active: true },
+                });
+            }
+
+            const activeSubs = await tx.subscription.findMany({
+                where: {
+                    websiteId: subscription.websiteId,
+                    is_active: true,
+                },
+                select: { check_interval: true },
+            });
+
+            if (activeSubs.length === 0) {
+                // Shouldn't happen, but keep schedule consistent.
+                await tx.websiteSchedule.deleteMany({
+                    where: { websiteId: subscription.websiteId },
+                });
+                return { websiteId: subscription.websiteId, schedule: null };
+            }
+
+            const minIntervalSeconds = Math.min(...activeSubs.map((s) => s.check_interval));
+
+            const schedule = await tx.websiteSchedule.findFirst({
+                where: { websiteId: subscription.websiteId },
+                select: { id: true, interval_seconds: true },
+            });
+
+            if (!schedule) {
+                await tx.websiteSchedule.create({
+                    data: {
+                        websiteId: subscription.websiteId,
+                        interval_seconds: minIntervalSeconds,
+                        next_run: new Date(Date.now() + 5000),
+                    },
+                });
+            } else if (minIntervalSeconds < schedule.interval_seconds) {
+                await tx.websiteSchedule.update({
+                    where: { id: schedule.id },
+                    data: {
+                        interval_seconds: minIntervalSeconds,
+                        next_run: new Date(Date.now() + minIntervalSeconds * 1000),
+                    },
+                });
+            }
+
+            return { websiteId: subscription.websiteId, schedule: { minIntervalSeconds } };
+        });
+
+        if (!updated) {
+            return res.status(404).json({ message: "User website not found" });
+        }
+
+        return res.status(200).json({ message: "Subscription activated", data: updated });
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" });
+    }
+}

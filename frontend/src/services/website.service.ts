@@ -73,6 +73,16 @@ export const getWebsiteById = async (subscriptionId: string) => {
     return response.data.data;
 }
 
+export const deactivateWebsiteSubscription = async (subscriptionId: string) => {
+    const response = await axiosClient.patch<{ message: string }>(`/websites/${subscriptionId}/deactivate`);
+    return response.data;
+}
+
+export const activateWebsiteSubscription = async (subscriptionId: string) => {
+    const response = await axiosClient.patch<{ message: string }>(`/websites/${subscriptionId}/activate`);
+    return response.data;
+}
+
 export const getWebsiteResults = async (websiteId: string) => {
     const response = await axiosClient.get<{ data: RoundResult[] }>(`/ping/${websiteId}`);
     return response.data.data;

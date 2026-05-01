@@ -20,7 +20,7 @@ import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianG
 import { useEffect, useState, Fragment } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
-import { getWebsiteById, getWebsiteContinentStatusForRound, getWebsiteResults, getWebsiteSubmissions, type ContinentRoundStatus, type UserWebsite, type RoundResult, type ValidatorSubmission } from '@/services/website.service';
+import { activateWebsiteSubscription, deactivateWebsiteSubscription, getWebsiteById, getWebsiteContinentStatusForRound, getWebsiteResults, getWebsiteSubmissions, type ContinentRoundStatus, type UserWebsite, type RoundResult, type ValidatorSubmission } from '@/services/website.service';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const CONTINENT_LABELS: Record<string, string> = {
@@ -55,6 +55,7 @@ const WebsiteDetailPage = () => {
     const [tickDialogOpen, setTickDialogOpen] = useState(false);
     const [selectedTickRound, setSelectedTickRound] = useState<RoundResult | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isTogglingActive, setIsTogglingActive] = useState(false);
     const { isAuthenticated, isLoading: authLoading } = useUserStore();
     const navigate = useNavigate();
 
@@ -221,6 +222,24 @@ const WebsiteDetailPage = () => {
     const downContinents = (continentRoundStatus?.continents ?? []).filter((c) => c.status === 'DOWN')
     const hasAnyContinentDown = downContinents.length > 0
 
+    const onToggleActive = async () => {
+        if (!websiteId) return;
+        try {
+            setIsTogglingActive(true);
+            if (website.is_active) {
+                await deactivateWebsiteSubscription(websiteId);
+            } else {
+                await activateWebsiteSubscription(websiteId);
+            }
+            await fetchData();
+        } catch (e) {
+            console.error('Failed to toggle subscription:', e);
+            alert('Failed to update subscription');
+        } finally {
+            setIsTogglingActive(false);
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -262,6 +281,14 @@ const WebsiteDetailPage = () => {
                         <Activity className="h-3 w-3 mr-1.5" />
                         {website.is_active ? 'Active' : 'Paused'}
                     </Badge>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={isTogglingActive}
+                        onClick={onToggleActive}
+                    >
+                        {isTogglingActive ? (website.is_active ? 'Deactivating…' : 'Activating…') : (website.is_active ? 'Deactivate' : 'Activate')}
+                    </Button>
                 </div>
             </div>
 
