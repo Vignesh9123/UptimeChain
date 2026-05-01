@@ -253,18 +253,72 @@ export const getWebsiteResults = async (req: Request, res: Response) => {
                 createdAt: 'desc'
             }
         })
-        const filteredResults = results.filter((result) => {
-            const checkInterval = subscription.check_interval
-            const roundTimestamp = result.roundTimestamp
-            const tolerance = 120000; // 2 min of tolerance is fine since the interval cannot be less than 5 min
-            const intervalMs = checkInterval * 1000;
-            const offset = subscription.createdAt.getTime();
-            const mod = (roundTimestamp.getTime() - offset) % intervalMs;
-            const diff = Math.min(mod, intervalMs - mod);
-            return diff <= tolerance;
-        })
+        const toleranceMs = 120000 // 2 min tolerance (interval cannot be < 5 min)
+        const intervalMs = subscription.check_interval * 1000
+
+        if (intervalMs <= 0 || results.length === 0) {
+            return res.status(200).json({ data: [] })
+        }
+
+        const resultsAsc = [...results].sort(
+            (a, b) => a.roundTimestamp.getTime() - b.roundTimestamp.getTime()
+        )
+
+        const firstIdx = resultsAsc.findIndex(
+            (r) => r.roundTimestamp.getTime() > subscription.createdAt.getTime()
+        )
+        if (firstIdx === -1) {
+            return res.status(200).json({ data: [] })
+        }
+
+        const firstRound = resultsAsc[firstIdx]
+        const lastRound = resultsAsc[resultsAsc.length - 1]
+        if (!firstRound || !lastRound) {
+            return res.status(200).json({ data: [] })
+        }
+
+        const firstRoundTs = firstRound.roundTimestamp.getTime()
+        const lastRoundTs = lastRound.roundTimestamp.getTime()
+
+        const filteredResults: typeof results = []
+        let i = firstIdx
+        for (
+            let expectedTs = firstRoundTs;
+            expectedTs <= lastRoundTs + toleranceMs;
+            expectedTs += intervalMs
+        ) {
+            while (i < resultsAsc.length) {
+                const current = resultsAsc[i]
+                if (!current) break
+                if (current.roundTimestamp.getTime() >= expectedTs - toleranceMs) break
+                i++
+            }
+
+            if (i >= resultsAsc.length) break
+
+            let bestIdx = -1
+            let bestDiff = Number.POSITIVE_INFINITY
+            for (let j = i; j < resultsAsc.length; j++) {
+                const candidate = resultsAsc[j]
+                if (!candidate) break
+                const ts = candidate.roundTimestamp.getTime()
+                if (ts > expectedTs + toleranceMs) break
+                const diff = Math.abs(ts - expectedTs)
+                if (diff < bestDiff) {
+                    bestDiff = diff
+                    bestIdx = j
+                }
+            }
+
+            if (bestIdx !== -1) {
+                const matched = resultsAsc[bestIdx]
+                if (!matched) break
+                filteredResults.push(matched)
+                i = bestIdx + 1
+            }
+        }
         return res.status(200).json({
-            data:filteredResults
+            data:filteredResults.reverse()
         })
     } catch (error) {
         return res.status(500).json({
