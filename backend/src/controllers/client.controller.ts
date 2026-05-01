@@ -11,8 +11,13 @@ async function getAmountAddedToWallet(txSig: string) {
     const parsedTxn = await connection.getParsedTransaction(txSig, {
       maxSupportedTransactionVersion: 0  
     })
-    console.log("Parsed txn", parsedTxn) // TODO: To be completed
-    return BigInt(0)
+    console.log("Parsed txn", parsedTxn)
+    const preBalance = parsedTxn?.meta?.preBalances?.[1]
+    const postBalance = parsedTxn?.meta?.postBalances?.[1]
+    if(!preBalance || !postBalance) return BigInt(0)
+    const amount = postBalance - preBalance
+    if(amount <= 0) return BigInt(0)
+    return BigInt(amount)
 }
 
 export async function verifyAmountAddedToWallet(req: Request, res: Response){
@@ -37,7 +42,7 @@ export async function verifyAmountAddedToWallet(req: Request, res: Response){
                 wallet_balance: updated_wallet_balance
             }
         })
-        return res.status(200).json({message: "Amount verified successfully", data: user})
+        return res.status(200).json({message: "Amount verified successfully", data: {...updatedUser, wallet_balance: updatedUser.wallet_balance.toString()}})
     } catch (error) {
         console.error(error)
         return res.status(500).json({message: "Internal server error"})

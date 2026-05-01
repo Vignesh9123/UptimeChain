@@ -166,6 +166,32 @@ export const getValidatorDashboard = async (req: Request, res: Response) => {
             take: 25,
         })
 
+        const recentRoundKeys = recent.map((r) => ({
+            websiteId: r.websiteId,
+            roundTimestamp: r.roundTimestamp,
+        }))
+
+        const recentRoundSubmissions = recentRoundKeys.length === 0 ? [] : await prisma.validatorSubmissions.findMany({
+            where: {
+                OR: recentRoundKeys.map((rk) => ({
+                    websiteId: rk.websiteId,
+                    roundTimestamp: rk.roundTimestamp,
+                }))
+            },
+            select: {
+                websiteId: true,
+                roundTimestamp: true,
+                validatorId: true,
+            },
+            distinct: ["websiteId", "roundTimestamp", "validatorId"],
+        })
+
+        const submissionsCountByRound = new Map<string, number>()
+        for (const s of recentRoundSubmissions) {
+            const key = `${s.websiteId}:${s.roundTimestamp.toISOString()}`
+            submissionsCountByRound.set(key, (submissionsCountByRound.get(key) ?? 0) + 1)
+        }
+
         const websiteIds = Array.from(new Set(recent.map((r) => r.websiteId)))
         const schedules = websiteIds.length === 0 ? [] : await prisma.websiteSchedule.findMany({
             where: { websiteId: { in: websiteIds } },
@@ -200,7 +226,12 @@ export const getValidatorDashboard = async (req: Request, res: Response) => {
         const recentItems: ValidatorDashboardItem[] = recent.map((s) => {
             const key = `${s.websiteId}:${s.roundTimestamp.toISOString()}`
             const isFinalized = finalizedSet.has(key)
-            const earningSol = isFinalized ? (rewardSolByWebsite.get(s.websiteId) ?? 0) : 0
+            const submissionsCount = submissionsCountByRound.get(key) ?? 0
+            const perRoundCostSol = rewardSolByWebsite.get(s.websiteId) ?? 0
+            const earningSol =
+                isFinalized
+                    ? (submissionsCount > 0 ? perRoundCostSol / submissionsCount : 0)
+                    : 0
             return {
                 websiteId: s.websiteId,
                 websiteUrl: s.website.url,

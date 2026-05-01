@@ -111,7 +111,7 @@ const ValidatorDashboard = () => {
   const totalEarningsSol = useMemo(() => {
     const v = dashboard?.totalEarningsSol;
     if (typeof v !== 'number') return '--';
-    return `${v.toFixed(3)} SOL`;
+    return `${v.toFixed(9)} SOL`;
   }, [dashboard]);
 
   const perFinalizedRoundRewardText = useMemo(() => {
@@ -276,7 +276,7 @@ const ValidatorDashboard = () => {
             ) : recentActivity.map((a) => {
               const ts = new Date(a.roundTimestamp);
               const timeText = Number.isNaN(ts.getTime()) ? '' : ts.toLocaleString();
-              const earningText = a.isFinalized ? `+${a.earningSol.toFixed(3)} SOL` : 'Pending';
+              const earningText = a.isFinalized ? `+${a.earningSol.toFixed(9)} SOL` : 'Pending';
               const earningClass = a.isFinalized ? 'text-green-600' : 'text-muted-foreground';
               const statusBadge =
                 a.status === 'UP'

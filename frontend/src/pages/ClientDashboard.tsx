@@ -15,6 +15,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import idl from '../idl/contract.json';
+import { axiosClient } from '@/config';
 
 const ClientDashboard = () => {
   const [addWebsiteDialogOpen, setAddWebsiteDialogOpen] = useState(false);
@@ -62,6 +63,11 @@ const ClientDashboard = () => {
       await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
 
       setRewardAmountSol('');
+      const response = await axiosClient.post('/clients/verify-amount', {
+        signature: signature
+      })
+      if(user)
+        user.wallet_balance = response.data.data.wallet_balance;
       alert(`Transferred ${amount} SOL to Reward Vault.\nSignature: ${signature}`);
     } catch (error) {
       console.error("Failed to fund reward vault", error);
@@ -187,15 +193,6 @@ const ClientDashboard = () => {
           </div>
           <div className='flex gap-2'>
             <WalletMultiButton className="!bg-primary !h-10" />
-            <Card className="hidden md:block">
-              <CardHeader className="py-2">
-                <CardTitle className="text-xs font-medium">Wallet balance</CardTitle>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <div className="text-sm font-semibold">{walletBalanceSolText} SOL</div>
-                <div className="text-[10px] text-muted-foreground">{walletBalanceLamportsText} lamports</div>
-              </CardContent>
-            </Card>
             <div className="hidden md:flex items-center gap-2">
               <Input
                 type="number"
@@ -240,7 +237,15 @@ const ClientDashboard = () => {
           </Dialog>
         </div>
           </div>
-
+          <Card className="hidden md:block">
+              <CardHeader className="py-2">
+                <CardTitle className="text-xs font-medium">Wallet balance</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <div className="text-sm font-semibold">{walletBalanceSolText} SOL</div>
+                <div className="text-[10px] text-muted-foreground">{walletBalanceLamportsText} lamports</div>
+              </CardContent>
+            </Card>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
