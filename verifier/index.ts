@@ -21,6 +21,89 @@ const AFTER_QUORUM_TIMEOUT_MS = 60_000;
 const MIN_QUORUM_RATIO = 2 / 3;
 const MIN_VALIDATORS = 3;
 
+const MONTH_SECONDS = 2_592_000;
+
+function monthlyPriceSolForCheckIntervalSeconds(checkIntervalSeconds: number): number {
+  if (checkIntervalSeconds === 300) return 0.5;
+  if (checkIntervalSeconds === 900) return 0.175;
+  if (checkIntervalSeconds === 1800) return 0.1;
+  if (checkIntervalSeconds === 3600) return 0.075;
+  return 0;
+}
+
+function solToLamportsBigint(sol: number): bigint {
+  const lamportsNumber = Math.round(sol * web3.LAMPORTS_PER_SOL);
+  return BigInt(lamportsNumber);
+}
+
+async function deductClientBalancesForRound(params: {
+  websiteId: string;
+  roundTimestampMs: number;
+  scheduleIntervalSeconds: number;
+}) {
+  const { websiteId, roundTimestampMs, scheduleIntervalSeconds } = params;
+  const roundDate = new Date(roundTimestampMs);
+  const monthlyRounds =
+    scheduleIntervalSeconds > 0 ? Math.max(1, Math.floor(MONTH_SECONDS / scheduleIntervalSeconds)) : 1;
+  const monthlyRoundsBig = BigInt(monthlyRounds);
+
+  const subscriptions = await prisma.subscription.findMany({
+    where: {
+      websiteId,
+      is_active: true,
+    },
+    select: {
+      id: true,
+      userId: true,
+      check_interval: true,
+      last_checked: true,
+    },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    for (const sub of subscriptions) {
+
+      if (sub.last_checked && sub.last_checked >= roundDate) continue;
+
+      const monthlySol = monthlyPriceSolForCheckIntervalSeconds(sub.check_interval);
+      if (monthlySol <= 0) continue;
+
+      const monthlyLamports = solToLamportsBigint(monthlySol);
+      const perRoundLamports = monthlyLamports / monthlyRoundsBig; // floor division
+      if (perRoundLamports <= 0n) continue;
+
+      const updatedUsers = await tx.user.updateMany({
+        where: {
+          id: sub.userId,
+          wallet_balance: {
+            gte: perRoundLamports,
+          },
+        },
+        data: {
+          wallet_balance: {
+            decrement: perRoundLamports,
+          },
+        },
+      });
+
+      if (updatedUsers.count !== 1) {
+        continue;
+      }
+
+      await tx.subscription.updateMany({
+        where: {
+          id: sub.id,
+          is_active: true,
+          OR: [{ last_checked: null }, { last_checked: { lt: roundDate } }],
+        },
+        data: {
+          last_checked: roundDate,
+        },
+      });
+    }
+  });
+}
+
 
 const pinata = new PinataSDK({
   pinataJwt: process.env.PINATA_JWT,
@@ -201,6 +284,22 @@ type ValidatorSubmission = {
       reportHash,
       submissions
     })
+    try {
+      const website = await prisma.website.findUnique({
+        where: { url: String(round.targetUrl) },
+        include: { schedules: true },
+      });
+      const scheduleIntervalSeconds = website?.schedules?.[0]?.interval_seconds ?? 0;
+      if (website && scheduleIntervalSeconds > 0) {
+        await deductClientBalancesForRound({
+          websiteId: website.id,
+          roundTimestampMs: round.roundTimestamp,
+          scheduleIntervalSeconds,
+        });
+      }
+    } catch (error) {
+      console.log("Error deducting client balances", error);
+    }
     await submitRoundOffChain({
       targetUrl: round.targetUrl as string,
       roundTimestamp: round.roundTimestamp,
@@ -483,12 +582,45 @@ async function submitRoundOnChain({
   if (!website) {
     throw new Error(`Website not found for URL: ${targetUrl}`);
   }
+  const websiteSchedule = await prisma.websiteSchedule.findFirst({
+    where: {
+      websiteId: website.id
+    }
+  })
+  if(!websiteSchedule) {
+    throw new Error(`Website schedule not found for URL: ${targetUrl}`);
+  }
+  const subscriptions = await prisma.subscription.findMany({
+    where: {
+      websiteId: website.id,
+      is_active: true
+    }
+  })
+  if(!subscriptions) {
+    throw new Error(`Subscriptions not found for URL: ${targetUrl}`);
+  }
+  let monthly_cost = 0
+  for(const subscription of subscriptions){
+    if(subscription.check_interval === 300){
+      monthly_cost += 0.5
+    } else if(subscription.check_interval === 900){
+      monthly_cost += 0.175
+    } else if(subscription.check_interval === 1800){
+      monthly_cost += 0.1
+    } else if(subscription.check_interval === 3600){
+      monthly_cost += 0.075
+    }
+  }
+  const monthly_number_of_rounds = Math.floor(MONTH_SECONDS / websiteSchedule.interval_seconds)
+  const cost_per_round = monthly_cost / monthly_number_of_rounds
+  const rewardLamports = Math.round(cost_per_round * web3.LAMPORTS_PER_SOL);
+  const reward_per_validator = new BN(rewardLamports.toString());
+  
   const bytes = Buffer.from(targetUrl, "utf8");
   const target_id = Array.from(
     createHash("sha256").update(bytes).digest()
   );
   const round_timestamp = new BN(Math.floor(roundTimestamp / 1000));
-  const reward_per_validator = new BN(0.001 * web3.LAMPORTS_PER_SOL)
   const validators = submissions.map((submission) => {
     return {
       pubkey: new PublicKey(submission.validatorPubkey),
