@@ -148,8 +148,14 @@ export const getValidatorDashboard = async (req: Request, res: Response) => {
 
         const finalizedSet = new Set(finalized.map((r) => `${r.websiteId}:${r.roundTimestamp.toISOString()}`))
         const finalizedRoundsCount = distinctRounds.filter((r) => finalizedSet.has(`${r.websiteId}:${r.roundTimestamp.toISOString()}`)).length
-
-        const totalEarningsSol = 0.001 * finalizedRoundsCount
+        const MONTH_SECONDS = 2_592_000;
+        const monthlyPriceSolForCheckIntervalSeconds = (checkIntervalSeconds: number): number => {
+            if (checkIntervalSeconds === 300) return 0.5
+            if (checkIntervalSeconds === 900) return 0.175
+            if (checkIntervalSeconds === 1800) return 0.1
+            if (checkIntervalSeconds === 3600) return 0.075
+            return 0
+        }
 
         const recent = await prisma.validatorSubmissions.findMany({
             where: { validatorId: validator.id },
@@ -160,9 +166,41 @@ export const getValidatorDashboard = async (req: Request, res: Response) => {
             take: 25,
         })
 
+        const websiteIds = Array.from(new Set(recent.map((r) => r.websiteId)))
+        const schedules = websiteIds.length === 0 ? [] : await prisma.websiteSchedule.findMany({
+            where: { websiteId: { in: websiteIds } },
+            select: { websiteId: true, interval_seconds: true },
+        })
+        const subs = websiteIds.length === 0 ? [] : await prisma.subscription.findMany({
+            where: { websiteId: { in: websiteIds }, is_active: true },
+            select: { websiteId: true, check_interval: true },
+        })
+
+        const intervalByWebsite = new Map<string, number>()
+        for (const s of schedules) {
+            if (!intervalByWebsite.has(s.websiteId)) intervalByWebsite.set(s.websiteId, s.interval_seconds)
+        }
+        const monthlyCostByWebsite = new Map<string, number>()
+        for (const sub of subs) {
+            const prev = monthlyCostByWebsite.get(sub.websiteId) ?? 0
+            monthlyCostByWebsite.set(sub.websiteId, prev + monthlyPriceSolForCheckIntervalSeconds(sub.check_interval))
+        }
+        const rewardSolByWebsite = new Map<string, number>()
+        for (const websiteId of websiteIds) {
+            const intervalSeconds = intervalByWebsite.get(websiteId) ?? 0
+            const monthlyCostSol = monthlyCostByWebsite.get(websiteId) ?? 0
+            if (intervalSeconds > 0 && monthlyCostSol > 0) {
+                const monthlyRounds = Math.max(1, Math.floor(MONTH_SECONDS / intervalSeconds))
+                rewardSolByWebsite.set(websiteId, monthlyCostSol / monthlyRounds)
+            } else {
+                rewardSolByWebsite.set(websiteId, 0)
+            }
+        }
+
         const recentItems: ValidatorDashboardItem[] = recent.map((s) => {
             const key = `${s.websiteId}:${s.roundTimestamp.toISOString()}`
             const isFinalized = finalizedSet.has(key)
+            const earningSol = isFinalized ? (rewardSolByWebsite.get(s.websiteId) ?? 0) : 0
             return {
                 websiteId: s.websiteId,
                 websiteUrl: s.website.url,
@@ -170,9 +208,13 @@ export const getValidatorDashboard = async (req: Request, res: Response) => {
                 status: s.status,
                 responseTimeMs: s.responseTime,
                 isFinalized,
-                earningSol: isFinalized ? 0.001 : 0,
+                earningSol,
             }
         })
+
+        const totalEarningsSol = recentItems
+            .filter((i) => i.isFinalized)
+            .reduce((sum, i) => sum + (typeof i.earningSol === "number" ? i.earningSol : 0), 0)
 
         return res.status(200).json({
             data: {

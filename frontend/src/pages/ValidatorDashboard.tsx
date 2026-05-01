@@ -114,6 +114,15 @@ const ValidatorDashboard = () => {
     return `${v.toFixed(3)} SOL`;
   }, [dashboard]);
 
+  const perFinalizedRoundRewardText = useMemo(() => {
+    const items = (dashboard?.recentActivity as any[] | undefined) ?? [];
+    const finalized = items.filter((i) => i?.isFinalized && typeof i?.earningSol === 'number');
+    if (finalized.length === 0) return '--';
+    const avg = finalized.reduce((s, i) => s + i.earningSol, 0) / finalized.length;
+    if (!Number.isFinite(avg)) return '--';
+    return `${avg.toFixed(6)} SOL per finalized round`;
+  }, [dashboard]);
+
   const tasksCompleted = useMemo(() => {
     const v = dashboard?.finalizedRounds;
     if (typeof v !== 'number') return '--';
@@ -224,7 +233,7 @@ const ValidatorDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalEarningsSol}</div>
-            <p className="text-xs text-slate-400">0.001 SOL per finalized round</p>
+            <p className="text-xs text-slate-400">{perFinalizedRoundRewardText}</p>
           </CardContent>
         </Card>
         
