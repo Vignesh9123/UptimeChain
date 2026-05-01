@@ -8,6 +8,7 @@ interface User {
     name: string;
     role: string;
     wallet_pubkey?: string;
+    wallet_balance?: string; // lamports as string from backend
 }
 
 interface UserState {

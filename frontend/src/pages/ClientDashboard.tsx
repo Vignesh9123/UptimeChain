@@ -22,7 +22,7 @@ const ClientDashboard = () => {
   const [latestResults, setLatestResults] = useState<any[]>([]);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [isLoadingWebsites, setIsLoadingWebsites] = useState(true);
-  const { isAuthenticated, isLoading } = useUserStore();
+  const { isAuthenticated, isLoading, user } = useUserStore();
   const { connection } = useConnection();
   const wallet = useAnchorWallet();
   const navigate = useNavigate();
@@ -163,6 +163,20 @@ const ClientDashboard = () => {
     return overview?.alerts ?? []
   }, [overview])
 
+  const walletBalanceLamportsText = useMemo(() => {
+    const v = user?.wallet_balance;
+    if (!v) return '--';
+    return v;
+  }, [user?.wallet_balance]);
+
+  const walletBalanceSolText = useMemo(() => {
+    const v = user?.wallet_balance;
+    if (!v) return '--';
+    const lamports = Number(v);
+    if (!Number.isFinite(lamports)) return '--';
+    return (lamports / LAMPORTS_PER_SOL).toFixed(4);
+  }, [user?.wallet_balance]);
+
   if (!isLoading && isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -173,6 +187,15 @@ const ClientDashboard = () => {
           </div>
           <div className='flex gap-2'>
             <WalletMultiButton className="!bg-primary !h-10" />
+            <Card className="hidden md:block">
+              <CardHeader className="py-2">
+                <CardTitle className="text-xs font-medium">Wallet balance</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <div className="text-sm font-semibold">{walletBalanceSolText} SOL</div>
+                <div className="text-[10px] text-muted-foreground">{walletBalanceLamportsText} lamports</div>
+              </CardContent>
+            </Card>
             <div className="hidden md:flex items-center gap-2">
               <Input
                 type="number"
