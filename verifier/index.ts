@@ -208,13 +208,31 @@ type ValidatorSubmission = {
     console.log("Validator", validator)
     if(!validator) return;
     // if(validator.is_active === false) return; // TODO: Handle this
+
+    const submissionContinent = submission.continent;
+
+    // If no active subscriber is subscribed to this continent, ignore this submission
+    const hasSubscriberForContinent = await prisma.subscription.findFirst({
+      where: {
+        websiteId: website.id,
+        is_active: true,
+        regions: {
+          has: submissionContinent,
+        },
+      },
+      select: { id: true },
+    });
+    if (!hasSubscriberForContinent) {
+      return;
+    }
+
     await submitValidatorSubmissionsOffChain({
       validatorId: validator.id,
       websiteId: website.id,
       roundTimestamp,
       status: submission.data.status,
       responseTime: submission.data.latency,
-      continent: submission.continent,
+      continent: submissionContinent,
     })
     round.submissions.set(submission.validatorPubkey, submission);
   

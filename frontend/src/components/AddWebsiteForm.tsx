@@ -21,6 +21,16 @@ export function AddWebsiteForm({ className, onClose, onSuccess, ...props }: AddW
     const [regions, setRegions] = useState<string[]>([]);
     const [interval, setInterval] = useState<string>('5');
 
+    const CONTINENTS = [
+        { id: 'Asia', label: 'Asia' },
+        { id: 'North America', label: 'North America' },
+        { id: 'South America', label: 'South America' },
+        { id: 'Europe', label: 'Europe' },
+        { id: 'Africa', label: 'Africa' },
+        { id: 'Oceania', label: 'Oceania' },
+        { id: 'Antarctica', label: 'Antarctica' },
+    ] as const;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !url) {
@@ -63,18 +73,18 @@ export function AddWebsiteForm({ className, onClose, onSuccess, ...props }: AddW
             <div className="grid gap-2">
                 <Label>Regions</Label>
                 <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="region-us" checked={regions.includes('us-east-1')} onCheckedChange={(checked) => setRegions((prev) => (checked ? [...prev, 'us-east-1'] : prev.filter((region) => region !== 'us-east-1')))} />
-                        <Label htmlFor="region-us">US East (N. Virginia)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="region-asia" checked={regions.includes('ap-southeast-1')} onCheckedChange={(checked) => setRegions((prev) => (checked ? [...prev, 'ap-southeast-1'] : prev.filter((region) => region !== 'ap-southeast-1')))} />
-                        <Label htmlFor="region-asia">Asia Pacific (Singapore)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="region-au" checked={regions.includes('ap-southeast-2')} onCheckedChange={(checked) => setRegions((prev) => (checked ? [...prev, 'ap-southeast-2'] : prev.filter((region) => region !== 'ap-southeast-2')))} />
-                        <Label htmlFor="region-au">Australia (Sydney)</Label>
-                    </div>
+                    {CONTINENTS.map((c) => (
+                        <div key={c.id} className="flex items-center space-x-2">
+                            <Checkbox
+                                id={`continent-${c.id}`}
+                                checked={regions.includes(c.id)}
+                                onCheckedChange={(checked) =>
+                                    setRegions((prev) => (checked ? [...prev, c.id] : prev.filter((region) => region !== c.id)))
+                                }
+                            />
+                            <Label htmlFor={`continent-${c.id}`}>{c.label}</Label>
+                        </div>
+                    ))}
                 </div>
             </div>
             <div className="grid gap-2">

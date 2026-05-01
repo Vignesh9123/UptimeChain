@@ -9,6 +9,15 @@ const addWebsiteSchema = z.object({
     url: z.url("Invalid URL").normalize(),
     check_interval: z.number().min(1).max(60),
     is_active: z.boolean().default(true),
+    regions: z.array(z.enum([
+        "Asia",
+        "North America",
+        "South America",
+        "Europe",
+        "Africa",
+        "Oceania",
+        "Antarctica",
+    ])).min(1, "Select at least one continent"),
 })
 
 export const addWebsite = async (req: Request, res: Response) => {
@@ -57,6 +66,7 @@ export const addWebsite = async (req: Request, res: Response) => {
                 websiteId: website.id,
                 check_interval: cleanedBody.check_interval * 60,
                 is_active: cleanedBody.is_active,
+                regions: cleanedBody.regions,
                 current_status: CheckStatus.UNKNOWN,
             }
         })

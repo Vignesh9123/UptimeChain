@@ -6,6 +6,7 @@ export interface UserWebsite {
     name: string;
     websiteId: string;
     check_interval: number;
+    regions: string[];
     is_active: boolean;
     current_status: string;
     createdAt: string;

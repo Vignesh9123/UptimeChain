@@ -23,24 +23,42 @@ import { useUserStore } from '@/store/userStore';
 import { activateWebsiteSubscription, deactivateWebsiteSubscription, getWebsiteById, getWebsiteContinentStatusForRound, getWebsiteResults, getWebsiteSubmissions, type ContinentRoundStatus, type UserWebsite, type RoundResult, type ValidatorSubmission } from '@/services/website.service';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+const CONTINENT_CODE_TO_NAME: Record<string, string> = {
+    NA: 'North America',
+    EU: 'Europe',
+    AS: 'Asia',
+    SA: 'South America',
+    AF: 'Africa',
+    OC: 'Oceania',
+    AN: 'Antarctica',
+};
+
+function toContinentName(value: string): string {
+    if (!value) return value;
+    return CONTINENT_CODE_TO_NAME[value] ?? value;
+}
+
 const CONTINENT_LABELS: Record<string, string> = {
-    'NA': 'North America',
-    'EU': 'Europe',
-    'AS': 'Asia',
-    'SA': 'South America',
-    'AF': 'Africa',
-    'OC': 'Oceania',
-    'AN': 'Antarctica',
+    ...CONTINENT_CODE_TO_NAME,
 };
 
 const CONTINENT_COLORS: Record<string, string> = {
-    'NA': '#6366f1',
-    'EU': '#8b5cf6',
-    'AS': '#ec4899',
-    'SA': '#f59e0b',
-    'AF': '#10b981',
-    'OC': '#06b6d4',
-    'AN': '#64748b',
+    // codes (legacy)
+    NA: '#6366f1',
+    EU: '#8b5cf6',
+    AS: '#ec4899',
+    SA: '#f59e0b',
+    AF: '#10b981',
+    OC: '#06b6d4',
+    AN: '#64748b',
+    // names (current)
+    'North America': '#6366f1',
+    Europe: '#8b5cf6',
+    Asia: '#ec4899',
+    'South America': '#f59e0b',
+    Africa: '#10b981',
+    Oceania: '#06b6d4',
+    Antarctica: '#64748b',
 };
 
 const IPFS_GATEWAY = import.meta.env.VITE_IPFS_GATEWAY;
@@ -188,11 +206,18 @@ const WebsiteDetailPage = () => {
         return `${Math.round(seconds / 3600)}h`;
     };
 
+    const subscribedContinents = new Set<string>(website?.regions ?? []);
+    const visibleSubmissions = submissions.filter((s) => {
+        const c = toContinentName(s.continent || 'Unknown');
+        if (subscribedContinents.size === 0) return true;
+        return subscribedContinents.has(c);
+    });
+
     const continentMap = new Map<string, ValidatorSubmission[]>();
-    submissions.forEach((s) => {
-        const key = s.continent || 'Unknown';
+    visibleSubmissions.forEach((s) => {
+        const key = toContinentName(s.continent || 'Unknown') || 'Unknown';
         if (!continentMap.has(key)) continentMap.set(key, []);
-        continentMap.get(key)!.push(s);
+        continentMap.get(key)!.push({ ...s, continent: key });
     });
 
     const continentStats = Array.from(continentMap.entries()).map(([continent, subs]) => {
@@ -210,16 +235,18 @@ const WebsiteDetailPage = () => {
     });
 
     const submissionsByRound = new Map<string, ValidatorSubmission[]>();
-    submissions.forEach((s) => {
+    visibleSubmissions.forEach((s) => {
         const key = s.roundTimestamp;
         if (!submissionsByRound.has(key)) submissionsByRound.set(key, []);
         submissionsByRound.get(key)!.push(s);
     });
 
     const continentStatusByCode = new Map<string, 'UP' | 'DOWN' | 'UNKNOWN'>(
-        (continentRoundStatus?.continents ?? []).map((c) => [c.continent, c.status])
+        (continentRoundStatus?.continents ?? []).map((c) => [toContinentName(c.continent), c.status])
     )
-    const downContinents = (continentRoundStatus?.continents ?? []).filter((c) => c.status === 'DOWN')
+    const downContinents = (continentRoundStatus?.continents ?? [])
+        .map((c) => ({ ...c, continent: toContinentName(c.continent) }))
+        .filter((c) => c.status === 'DOWN')
     const hasAnyContinentDown = downContinents.length > 0
 
     const onToggleActive = async () => {

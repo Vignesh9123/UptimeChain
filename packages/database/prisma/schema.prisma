@@ -59,7 +59,7 @@ model Subscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
   check_interval Int
-  regions String[] @default(["Asia", "North America", "Oceania"])
+  regions String[] @default([])
   last_checked DateTime?
   current_status CheckStatus
   is_active Boolean @default(true)
