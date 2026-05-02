@@ -35,6 +35,7 @@ const ValidatorDashboard = () => {
   const [dashboard, setDashboard] = useState<any>(null);
   const [stakeSuccessDialogOpen, setStakeSuccessDialogOpen] = useState(false);
   const [dockerCommandCopied, setDockerCommandCopied] = useState(false);
+  const [isStoppingNode, setIsStoppingNode] = useState(false);
   useEffect(() => {
     const registerPubkey = async () => {
       if (wallet && user && !user.wallet_pubkey && user.role.toLowerCase() === 'validator') {
@@ -205,6 +206,24 @@ const ValidatorDashboard = () => {
     }
   };
 
+  const handleStopNode = async () => {
+    if (!isNodeActive) return;
+    if (!window.confirm('Stop your validator node? It will stop receiving tasks until you run the container again and meet stake requirements.')) {
+      return;
+    }
+    setIsStoppingNode(true);
+    try {
+      await axiosClient.post('/validators/deactivate');
+      const response = await axiosClient.get('/validators/dashboard');
+      setDashboard(response.data.data);
+    } catch (error) {
+      console.error('Failed to deactivate validator', error);
+      alert('Failed to stop node. See console for details.');
+    } finally {
+      setIsStoppingNode(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Dialog
@@ -261,7 +280,13 @@ const ValidatorDashboard = () => {
           ) : (
             <Badge variant="outline" className="text-yellow-600 border-yellow-600 px-4 py-1">Node Inactive</Badge>
           )}
-          <Button variant="destructive" disabled>Stop Node</Button>
+          <Button
+            variant="destructive"
+            disabled={!isNodeActive || isStoppingNode}
+            onClick={handleStopNode}
+          >
+            {isStoppingNode ? 'Stopping…' : 'Stop Node'}
+          </Button>
         </div>
       </div>
 
