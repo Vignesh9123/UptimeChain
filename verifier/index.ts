@@ -207,7 +207,7 @@ type ValidatorSubmission = {
     const validator = user.validator;
     console.log("Validator", validator)
     if(!validator) return;
-    // if(validator.is_active === false) return; // TODO: Handle this
+    if(validator.is_active === false) return; // TODO: Handle this
 
     const submissionContinent = submission.continent;
 

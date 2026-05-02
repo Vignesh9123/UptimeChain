@@ -25,7 +25,7 @@ const registerValidatorRegionSchema = z.object({
     continent: z.string().min(1),
     pubkey: z.string().min(1),
 })
-const registerValidatorOnChain = async (validatorPubkey: string) => {
+export const registerValidatorOnChain = async (validatorPubkey: string) => {
     try {
         if(!program.methods.initializeValidator){
             return

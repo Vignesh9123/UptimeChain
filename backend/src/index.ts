@@ -5,6 +5,7 @@ import cors from 'cors'
 import { prisma } from '@uptime-chain/database'
 import { Keypair, PublicKey } from '@solana/web3.js'
 import { web3 } from '@coral-xyz/anchor'
+import { registerValidatorOnChain } from './controllers/validator.controller'
 const app = express()
 
 app.use(express.json())
@@ -47,6 +48,13 @@ app.post("/initialize-pre-accs", async (req, res) => { // TODO: This should not 
     const airdropTxn3 = await provider.connection.requestAirdrop(rewardPDA,1 * web3.LAMPORTS_PER_SOL) // TODO: Move this somewhere else
     await provider.connection.confirmTransaction(airdropTxn3)
     console.log("Reward PDA: ", rewardPDA.toBase58())
+
+    const stake_seeds = [
+      Buffer.from("stake_pool")
+    ]
+    const [stakePDA] = PublicKey.findProgramAddressSync(stake_seeds, program.programId)
+    console.log("Stake PDA: ", stakePDA.toBase58())
+
     res.status(200).json({
       message: "Pre-accounts initialized successfully"
     })
@@ -56,7 +64,23 @@ app.post("/initialize-pre-accs", async (req, res) => { // TODO: This should not 
       message: "Failed to initialize pre-accounts"
     })
   }
-}) 
+})
+
+app.post("/register-validator-on-chain", async (req, res) => {
+  try {
+    const validatorPubkey = req.body.validatorPubkey
+    await registerValidatorOnChain(validatorPubkey)
+    res.status(200).json({
+      message: "Validator registered on chain successfully"
+    })
+  }
+  catch (error) {
+    console.error("Failed to register validator on chain", error)
+    res.status(200).json({
+      message: "Failed to register validator on chain"
+    })
+  }
+})
 
 try {
   await prisma.$connect()

@@ -2,7 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, Cpu, CheckCircle, Activity, Wallet, AlertCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Coins, Cpu, CheckCircle, Activity, Wallet, AlertCircle, Copy } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { useUserStore } from '@/store/userStore';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +21,9 @@ import { PublicKey, SystemProgram } from '@solana/web3.js';
 import idl from '../idl/contract.json';
 import { axiosClient } from '@/config';
 
+const VALIDATOR_DOCKER_RUN_COMMAND =
+  'sudo docker run -e PRIVATE_KEY=YOUR_PRIVATE_KEY -e PUBLIC_KEY=YOUR_PUBLIC_KEY -e QUEUE_API=QUEUE_API_URL --network host vignesh9123/validator-container';
+
 const ValidatorDashboard = () => {
   const { isLoading, isAuthenticated, user } = useUserStore();
   const navigate = useNavigate();
@@ -22,6 +33,8 @@ const ValidatorDashboard = () => {
   const [isStaking, setIsStaking] = useState(false);
   const [validator, setValidator] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
+  const [stakeSuccessDialogOpen, setStakeSuccessDialogOpen] = useState(false);
+  const [dockerCommandCopied, setDockerCommandCopied] = useState(false);
   useEffect(() => {
     const registerPubkey = async () => {
       if (wallet && user && !user.wallet_pubkey && user.role.toLowerCase() === 'validator') {
@@ -133,8 +146,23 @@ const ValidatorDashboard = () => {
     return (dashboard?.recentActivity as any[] | undefined) ?? [];
   }, [dashboard]);
 
+  const copyDockerCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(VALIDATOR_DOCKER_RUN_COMMAND);
+      setDockerCommandCopied(true);
+      window.setTimeout(() => setDockerCommandCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      alert('Failed to copy to clipboard');
+    }
+  };
+
   const handleStake = async () => {
     if (!program || !wallet || !stakeAmount) return;
+    if(parseFloat(stakeAmount) < 0.5 && validator?.stake_amount == 0) {
+      alert("Minimum stake amount is 0.5 SOL.");
+      return;
+    }
     setIsStaking(true);
     try {
       const amount = new BN(parseFloat(stakeAmount) * 1e9);
@@ -168,7 +196,7 @@ const ValidatorDashboard = () => {
       });
 
       setStakeAmount('');
-      alert("Staking successful!");
+      setStakeSuccessDialogOpen(true);
     } catch (error) {
       console.error("Staking failed", error);
       alert("Staking failed. See console for details.");
@@ -179,6 +207,48 @@ const ValidatorDashboard = () => {
 
   return (
     <div className="space-y-6">
+      <Dialog
+        open={stakeSuccessDialogOpen}
+        onOpenChange={(open) => {
+          setStakeSuccessDialogOpen(open);
+          if (!open) setDockerCommandCopied(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Staking successful</DialogTitle>
+            <DialogDescription>
+              Run the validator container on your machine. Replace YOUR_PRIVATE_KEY, YOUR_PUBLIC_KEY, and QUEUE_API_URL
+              with your values before running.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative rounded-md border bg-muted/50 p-3 pr-12">
+            <pre className="max-h-[200px] overflow-x-auto overflow-y-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
+              {VALIDATOR_DOCKER_RUN_COMMAND}
+            </pre>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="absolute right-2 top-2 h-8 w-8 shrink-0"
+              onClick={copyDockerCommand}
+              title="Copy command"
+              aria-label="Copy Docker command"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+          {dockerCommandCopied ? (
+            <p className="text-sm text-muted-foreground">Copied to clipboard.</p>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" onClick={() => setStakeSuccessDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Validator Node</h2>
@@ -201,7 +271,7 @@ const ValidatorDashboard = () => {
             <Wallet className="h-5 w-5" />
             Stake SOL
           </CardTitle>
-          <CardDescription>Stake SOL to activate your validator node and earn rewards.</CardDescription>
+          <CardDescription>Stake SOL to activate your validator node and earn rewards.<br />Minimum stake amount is 0.5 SOL.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
