@@ -203,7 +203,7 @@ export function AddWebsiteForm({ className, onClose, onSuccess, ...props }: AddW
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     {CONTINENTS.map((c) => {
-                        const selectable = isRegionSelectMable(c.id);
+                        const selectable = isRegionSelectable(c.id);
                         const count =
                             validatorsByRegionStatus === 'ready' && validatorCountByRegion
                                 ? validatorCountByRegion[c.id] ?? 0
