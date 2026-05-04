@@ -1,12 +1,15 @@
 import type { Request, Response } from "express";
 import z from "zod";
 import { prisma } from "@uptime-chain/database";
-import { CheckStatus, type Subscription, type Website } from "@uptime-chain/database";
+import { CheckStatus, type Website } from "@uptime-chain/database";
 import { createHash } from "crypto";
 import { program, authority } from "../config";
 const addWebsiteSchema = z.object({
     name: z.string().min(3).max(20),
-    url: z.url("Invalid URL").normalize(),
+    url: z.url({
+        normalize: true,
+        error:"Invalid URL"
+    }),
     check_interval: z.number().min(1).max(60),
     is_active: z.boolean().default(true),
     regions: z.array(z.enum([
@@ -253,7 +256,6 @@ export const activateSubscription = async (req: Request, res: Response) => {
             });
 
             if (activeSubs.length === 0) {
-                // Shouldn't happen, but keep schedule consistent.
                 await tx.websiteSchedule.deleteMany({
                     where: { websiteId: subscription.websiteId },
                 });

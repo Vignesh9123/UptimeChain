@@ -1,11 +1,13 @@
 import express from 'express'
-import { env, program, provider } from './config'
+import { authority, env, program, provider } from './config'
 import indexRouter from './routes'
 import cors from 'cors'
 import { prisma } from '@uptime-chain/database'
-import { Keypair, PublicKey } from '@solana/web3.js'
+import { PublicKey } from '@solana/web3.js'
 import { web3 } from '@coral-xyz/anchor'
 import { registerValidatorOnChain } from './controllers/validator.controller'
+import z from 'zod'
+import { createHash } from 'crypto'
 const app = express()
 
 app.use(express.json())
@@ -28,7 +30,6 @@ app.post("/initialize-pre-accs", async (req, res) => { // TODO: This should not 
     if(!program.methods.initializeRewardVault){
       throw new Error("Program methods not initialized")
     }
-    const authority = Keypair.fromSecretKey(env.VALIDATOR_AUTHORITY_PRIVATE_KEY);
     await program.methods.initializeStakePool()
     .accounts({
       authority: authority.publicKey
@@ -78,6 +79,39 @@ app.post("/register-validator-on-chain", async (req, res) => {
     console.error("Failed to register validator on chain", error)
     res.status(200).json({
       message: "Failed to register validator on chain"
+    })
+  }
+})
+
+const initTargetSchema = z.object({
+  url: z.url({
+    normalize: true,
+    error:"Invalid URL"
+  }),
+})
+
+app.post("/initialize-target-on-chain", async (req, res) => {
+  try {
+    const cleanedBody = initTargetSchema.parse(req.body);
+    const bytes = Buffer.from(cleanedBody.url, "utf8");
+    const target_id = Array.from(
+      createHash("sha256").update(bytes).digest()
+    );
+    const txn1 = await program?.methods?.initializeTarget?.(target_id)
+      .accounts({
+        authority: authority.publicKey
+      })
+      .signers([authority])
+      .rpc()
+    console.log("Initialize target transaction: ", txn1)
+    res.status(200).json({
+      message: "Target initialized on chain successfully"
+    })
+  }
+  catch (error) {
+    console.error("Failed to initialize target on chain", error)
+    res.status(200).json({
+      message: "Failed to initialize target on chain"
     })
   }
 })
