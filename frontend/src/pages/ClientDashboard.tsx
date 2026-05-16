@@ -137,7 +137,7 @@ const ClientDashboard = () => {
     if (!isAuthenticated) return;
     const interval = setInterval(() => {
       fetchOverview();
-    }, 30000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [isAuthenticated])
 
