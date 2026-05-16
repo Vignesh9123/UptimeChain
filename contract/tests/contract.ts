@@ -57,6 +57,7 @@ describe("uptime_contract", () => {
     const targetAccount = await program.account.targetAccount.fetch(targetPDA)
     expect(targetAccount.targetId).to.deep.equal(target_id)
   });
+  
   it("Is round submitted!", async () => {
     const verifier = anchor.web3.Keypair.generate()
     const airdropTxn = await provider.connection.requestAirdrop(verifier.publicKey, 50 * anchor.web3.LAMPORTS_PER_SOL) 
@@ -143,4 +144,78 @@ describe("uptime_contract", () => {
     const verifier_balance = await provider.connection.getBalance(verifier.publicKey)
     console.log("Verifier balance after all", verifier_balance)
   });
+  it("Is validator staked!", async () => {
+    const validator = anchor.web3.Keypair.generate()
+    const airdropTxn = await provider.connection.requestAirdrop(validator.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL) 
+    await provider.connection.confirmTransaction(airdropTxn)
+
+    const authority = anchor.web3.Keypair.generate()
+    const airdropTxn2 = await provider.connection.requestAirdrop(authority.publicKey, 50 * anchor.web3.LAMPORTS_PER_SOL) 
+    await provider.connection.confirmTransaction(airdropTxn2)
+    const txn1 = await program.methods.initializeValidator()
+    .accounts({
+      authority: authority.publicKey,
+      validator: validator.publicKey
+    })
+    .signers([authority])
+    .rpc()
+    console.log("Init val Transaction: ", txn1);
+    const txn = await program.methods.validatorStake(new anchor.BN(0.5 * anchor.web3.LAMPORTS_PER_SOL))
+    .accounts({
+      validator: validator.publicKey
+    })
+    .signers([validator])
+    .rpc()
+    console.log("Validator stake Transaction: ", txn);
+    const validatorSeeds = [Buffer.from("validator"), validator.publicKey.toBuffer()]
+    const [validatorPDA] = PublicKey.findProgramAddressSync(validatorSeeds, program.programId)
+    const validatorAccount = await program.account.validatorAccount.fetch(validatorPDA)
+    expect(validatorAccount.stakeAmount.toNumber()).to.be.equal(0.5 * anchor.web3.LAMPORTS_PER_SOL)
+
+    const validatorBalance = await provider.connection.getBalance(validator.publicKey)
+    expect(validatorBalance).to.be.lessThanOrEqual(0.5 * anchor.web3.LAMPORTS_PER_SOL)
+  });
+  it("Is validator staked!", async () => {
+    const validator = anchor.web3.Keypair.generate()
+    const airdropTxn = await provider.connection.requestAirdrop(validator.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL) 
+    await provider.connection.confirmTransaction(airdropTxn)
+
+    const authority = anchor.web3.Keypair.generate()
+    const airdropTxn2 = await provider.connection.requestAirdrop(authority.publicKey, 50 * anchor.web3.LAMPORTS_PER_SOL) 
+    await provider.connection.confirmTransaction(airdropTxn2)
+    const txn1 = await program.methods.initializeValidator()
+    .accounts({
+      authority: authority.publicKey,
+      validator: validator.publicKey
+    })
+    .signers([authority])
+    .rpc()
+    console.log("Init val Transaction: ", txn1);
+    const txn = await program.methods.validatorStake(new anchor.BN(0.5 * anchor.web3.LAMPORTS_PER_SOL))
+    .accounts({
+      validator: validator.publicKey
+    })
+    .signers([validator])
+    .rpc()
+    console.log("Validator stake Transaction: ", txn);
+    
+    const txn2 = await program.methods
+    .validatorUnstake()
+    .accounts({
+      validator: validator.publicKey
+    })
+    .signers([validator])
+    .rpc()
+    console.log("Validator unstake Transaction: ", txn2);
+
+    const validatorSeeds = [Buffer.from("validator"), validator.publicKey.toBuffer()]
+    const [validatorPDA] = PublicKey.findProgramAddressSync(validatorSeeds, program.programId)
+    const validatorAccount = await program.account.validatorAccount.fetch(validatorPDA)
+    expect(validatorAccount.stakeAmount.toNumber()).to.be.equal(0)
+    expect(validatorAccount.isActive).to.be.equal(false)
+    const validatorBalance = await provider.connection.getBalance(validator.publicKey)
+    console.log("Validator balance", validatorBalance)
+    expect(validatorBalance).to.be.lessThanOrEqual(1 * anchor.web3.LAMPORTS_PER_SOL)
+  });
+  
 });
