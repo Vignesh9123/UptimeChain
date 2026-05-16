@@ -34,6 +34,7 @@ const ValidatorDashboard = () => {
   const [validator, setValidator] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
   const [stakeSuccessDialogOpen, setStakeSuccessDialogOpen] = useState(false);
+  const [isStartingNode, setIsStartingNode] = useState(false);
   const [dockerCommandCopied, setDockerCommandCopied] = useState(false);
   const [isStoppingNode, setIsStoppingNode] = useState(false);
   useEffect(() => {
@@ -224,6 +225,24 @@ const ValidatorDashboard = () => {
     }
   };
 
+  const handleStartNode = async () => {
+    if (isNodeActive) return;
+    if (!window.confirm('Start your validator node? It will start receiving tasks.')) {
+      return;
+    }
+    setIsStartingNode(true);
+    try {
+      await axiosClient.post('/validators/activate');
+      const response = await axiosClient.get('/validators/dashboard');
+      setDashboard(response.data.data);
+    } catch (error) {
+      console.error('Failed to activate validator', error);
+      alert('Failed to start node. See console for details.');
+    } finally {
+      setIsStartingNode(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Dialog
@@ -283,9 +302,9 @@ const ValidatorDashboard = () => {
           <Button
             variant="destructive"
             disabled={!isNodeActive || isStoppingNode}
-            onClick={handleStopNode}
+            onClick={isNodeActive ? handleStopNode : handleStartNode}
           >
-            {isStoppingNode ? 'Stopping…' : 'Stop Node'}
+            {!isNodeActive ? (isStartingNode ? 'Starting…' : 'Start Node') : (isStoppingNode ? 'Stopping…' : 'Stop Node')}
           </Button>
         </div>
       </div>
