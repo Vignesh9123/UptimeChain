@@ -21,6 +21,7 @@ Anyone can independently verify a round by fetching the report from IPFS and com
 
 ## Architecture
 <img width="1542" height="744" alt="Uptimechain arch for paper 2" src="https://github.com/user-attachments/assets/a8b3d3ba-63d6-48f7-9e84-f661e8fb5063" />
+
 ---
 
 ## Services
