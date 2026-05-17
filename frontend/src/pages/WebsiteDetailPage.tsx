@@ -74,6 +74,8 @@ const WebsiteDetailPage = () => {
     const [selectedTickRound, setSelectedTickRound] = useState<RoundResult | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isTogglingActive, setIsTogglingActive] = useState(false);
+    const [tickPage, setTickPage] = useState(0);
+    const [tablePage, setTablePage] = useState(0);
     const { isAuthenticated, isLoading: authLoading } = useUserStore();
     const navigate = useNavigate();
 
@@ -183,7 +185,8 @@ const WebsiteDetailPage = () => {
             status: r.status,
         }));
 
-    const tickData = rounds.slice(0, 60).reverse();
+    const tickPageSize = 60;
+    const tickData = rounds.slice(tickPage * tickPageSize, (tickPage + 1) * tickPageSize).reverse();
 
     const copyToClipboard = async (text: string) => {
         if (!text) return;
@@ -376,11 +379,31 @@ const WebsiteDetailPage = () => {
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Round History</CardTitle>
-                    <CardDescription>
-                        Last {tickData.length} monitoring rounds — each block represents one check.
-                    </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div className="space-y-1.5">
+                        <CardTitle>Round History</CardTitle>
+                        <CardDescription>
+                            Showing {rounds.length > 0 ? tickPage * tickPageSize + 1 : 0} - {Math.min((tickPage + 1) * tickPageSize, rounds.length)} of {rounds.length} monitoring rounds — each block represents one check.
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={tickPage >= Math.ceil(rounds.length / tickPageSize) - 1 || rounds.length === 0}
+                            onClick={() => setTickPage(p => p + 1)}
+                        >
+                            Older
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={tickPage === 0}
+                            onClick={() => setTickPage(p => p - 1)}
+                        >
+                            Newer
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {tickData.length === 0 ? (
@@ -680,9 +703,31 @@ const WebsiteDetailPage = () => {
             )}
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Round Details</CardTitle>
-                    <CardDescription>Click a row to see continent-wise validator submissions for that round.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div className="space-y-1.5">
+                        <CardTitle>Round Details</CardTitle>
+                        <CardDescription>
+                            Showing {rounds.length > 0 ? tablePage * 60 + 1 : 0} - {Math.min((tablePage + 1) * 60, rounds.length)} of {rounds.length} rounds. Click a row to see continent-wise validator submissions.
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={tablePage >= Math.ceil(rounds.length / 60) - 1 || rounds.length === 0}
+                            onClick={() => setTablePage(p => p + 1)}
+                        >
+                            Older
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            disabled={tablePage === 0}
+                            onClick={() => setTablePage(p => p - 1)}
+                        >
+                            Newer
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {rounds.length === 0 ? (
@@ -700,7 +745,7 @@ const WebsiteDetailPage = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {rounds.slice(0, 50).map((round) => {
+                                    {rounds.slice(tablePage * 60, (tablePage + 1) * 60).map((round) => {
                                         const roundSubs = submissionsByRound.get(round.roundTimestamp) || [];
                                         const isExpanded = expandedRound === round.roundTimestamp;
 
