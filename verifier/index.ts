@@ -657,6 +657,8 @@ async function submitRoundOnChain({
     reportHashBytes,
     reward_per_validator
   })
+  console.log("round timestamp", roundTimestamp)
+  console.log("Now", Date.now())
   const txn = await program?.methods
     ?.submitRound?.(
       target_id,

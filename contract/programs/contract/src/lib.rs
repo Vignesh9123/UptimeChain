@@ -58,13 +58,7 @@ pub mod contract {
         median_latency_ms: u32,
         report_hash: [u8; 32],
         reward_per_validator: u64,
-    ) -> Result<()> { // TODO: Add validator stake check
-        let now = Clock::get()?.unix_timestamp;
-
-        require!(
-            (round_timestamp - now).abs() <= 180,
-            ErrorCode::InvalidRoundTimestamp
-        );
+    ) -> Result<()> {
 
         let vault = &ctx.accounts.reward_vault;
         
