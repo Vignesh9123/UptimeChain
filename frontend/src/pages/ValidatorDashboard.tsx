@@ -37,6 +37,7 @@ const ValidatorDashboard = () => {
   const [isStartingNode, setIsStartingNode] = useState(false);
   const [dockerCommandCopied, setDockerCommandCopied] = useState(false);
   const [isStoppingNode, setIsStoppingNode] = useState(false);
+  const [isUnstaking, setIsUnstaking] = useState(false);
   useEffect(() => {
     const registerPubkey = async () => {
       if (wallet && user && !user.wallet_pubkey && user.role.toLowerCase() === 'validator') {
@@ -243,8 +244,46 @@ const ValidatorDashboard = () => {
     }
   }
 
+  const handleUnstake = async () => {
+    if (!program || !wallet) return;
+    if (!window.confirm('Unstake your SOL? You will stop receiving tasks and your stake will be returned to your wallet.')) {
+      return;
+    }
+    setIsUnstaking(true);
+    try {
+      const tx = await program.methods
+        .validatorUnstake()
+        .accounts({
+          validator: wallet.publicKey
+        } as any)
+        .rpc();
+      console.log("Unstake transaction signature", tx);
+
+      await axiosClient.post('/validators/unstake');
+      const response = await axiosClient.get('/validators/dashboard');
+      setDashboard(response.data.data);
+      const valResponse = await axiosClient.get('/validators/get-validator');
+      setValidator({
+        ...valResponse.data.data,
+        stake_amount: Number(valResponse.data.data.stake_amount)
+      });
+      alert('Unstaked successfully');
+    } catch (error) {
+      console.error('Failed to unstake', error);
+      alert('Failed to unstake. See console for details.');
+    } finally {
+      setIsUnstaking(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {!isNodeActive && validator?.stake_amount === 0 && (
+        <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-4 mb-4" role="alert">
+          <p className="font-bold">Activation Required</p>
+          <p>Your validator node is inactive and you have 0 SOL staked. Please stake SOL to activate your node.</p>
+        </div>
+      )}
       <Dialog
         open={stakeSuccessDialogOpen}
         onOpenChange={(open) => {
@@ -305,6 +344,13 @@ const ValidatorDashboard = () => {
             onClick={isNodeActive ? handleStopNode : handleStartNode}
           >
             {!isNodeActive ? (isStartingNode ? 'Starting…' : 'Start Node') : (isStoppingNode ? 'Stopping…' : 'Stop Node')}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={isUnstaking || !wallet || validator?.stake_amount === 0}
+            onClick={handleUnstake}
+          >
+            {isUnstaking ? 'Unstaking…' : 'Unstake / Exit'}
           </Button>
         </div>
       </div>

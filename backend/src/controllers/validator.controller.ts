@@ -443,6 +443,32 @@ export const activateValidator = async (req: Request, res: Response) => {
     }
 }
 
+export const unstakeValidator = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user.id
+        const user = await prisma.user.findUnique({
+            where: {
+                id: userId,
+                role: "VALIDATOR",
+            },
+            include: {
+                validator: true,
+            },
+        })
+        if (!user || !user.validator) {
+            return res.status(401).json({ message: "Unauthorized" })
+        }
+        await prisma.validator.update({
+            where: { user_id: userId },
+            data: { is_active: false, stake_amount: 0 },
+        })
+        return res.status(200).json({ message: "Validator unstaked and deactivated" })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({ message: "Internal server error" })
+    }
+}
+
 
 export const getValidatorsByRegion = async (req: Request, res: Response) => {
     try {
