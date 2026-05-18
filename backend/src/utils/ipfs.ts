@@ -7,7 +7,7 @@ export const getIPFSReport = async (cid: string) => {
     const report_hash = createHash('sha256').update(Buffer.from(json)).digest('hex');
     console.log("Report hash", report_hash)
     return {
-        round_timestamp: data.roundTimestamp, // already in ms,
+        round_timestamp: Math.floor(data.roundTimestamp / 1000)*1000,
         report_hash,
         uptime_percent: data.uptimePercent,
         median_latency_ms: data.medianLatency

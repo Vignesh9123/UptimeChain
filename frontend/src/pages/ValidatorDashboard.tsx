@@ -22,7 +22,7 @@ import idl from '../idl/contract.json';
 import { axiosClient } from '@/config';
 
 const VALIDATOR_DOCKER_RUN_COMMAND =
-  'sudo docker run -e PRIVATE_KEY=YOUR_PRIVATE_KEY -e PUBLIC_KEY=YOUR_PUBLIC_KEY -e QUEUE_API=QUEUE_API_URL --network host vignesh9123/validator-container';
+  'sudo docker run -e PRIVATE_KEY=YOUR_PRIVATE_KEY -e PUBLIC_KEY=YOUR_PUBLIC_KEY --network host vignesh9123/validator-container';
 
 const ValidatorDashboard = () => {
   const { isLoading, isAuthenticated, user } = useUserStore();
