@@ -127,3 +127,10 @@ export const getWebsiteContinentStatusForRound = async (websiteId: string, round
     });
     return response.data.data;
 }
+
+export const verifyRoundDetails = async (ipfs_cid: string, round_pda: string) => {
+    const response = await axiosClient.get(`/ping/verify-round`, {
+        params: { ipfs_cid, round_pda }
+    });
+    return response.data.data;
+}

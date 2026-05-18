@@ -6,6 +6,7 @@ import AddWebsitePage from './pages/AddWebsitePage';
 import ValidatorDashboard from './pages/ValidatorDashboard';
 import WebsitesListPage from './pages/WebsitesListPage';
 import WebsiteDetailPage from './pages/WebsiteDetailPage';
+import VerificationPage from './pages/VerificationPage';
 import Login from './pages/LoginPage';
 import Register from './pages/RegisterPage';
 import OtpPage from './pages/OtpPage';
@@ -37,6 +38,7 @@ function App() {
                   <Route path="/client/add-website" element={<Layout><AddWebsitePage /></Layout>} />
                   <Route path="/client/websites" element={<Layout><WebsitesListPage /></Layout>} />
                   <Route path="/client/websites/:websiteId" element={<Layout><WebsiteDetailPage /></Layout>} />
+                  <Route path="/client/verify" element={<Layout><VerificationPage /></Layout>} />
                   <Route path="/validator" element={<Layout><ValidatorDashboard /></Layout>} />
                 </Routes>
               </ThemeProvider>

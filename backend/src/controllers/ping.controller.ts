@@ -423,3 +423,32 @@ export const getWebsiteContinentStatusForRound = async (req: Request, res: Respo
         return res.status(500).json({ error })
     }
 }
+
+export const verifyRoundDetails = async (req: Request, res: Response) => {
+    try {
+        const { ipfs_cid, round_pda } = req.query;
+
+        if (!ipfs_cid || typeof ipfs_cid !== "string") {
+            return res.status(400).json({ error: "ipfs_cid is required" });
+        }
+        if (!round_pda || typeof round_pda !== "string") {
+            return res.status(400).json({ error: "round_pda is required" });
+        }
+
+        const { getIPFSReport } = await import("../utils/ipfs");
+        const { getRoundDetailsFromChain } = await import("../utils/blockchain");
+
+        const ipfsDetails = await getIPFSReport(ipfs_cid);
+        const blockchainDetails = await getRoundDetailsFromChain(round_pda);
+
+        return res.status(200).json({
+            data: {
+                ipfsDetails,
+                blockchainDetails,
+            },
+        });
+    } catch (error) {
+        console.error("verifyRoundDetails error", error);
+        return res.status(500).json({ error: "Failed to verify round details" });
+    }
+};

@@ -540,6 +540,15 @@ const WebsiteDetailPage = () => {
                                     {selectedTickRound.ipfs_cid ? `${IPFS_GATEWAY}/${selectedTickRound.ipfs_cid}` : '—'}
                                 </p>
                             </div>
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    type="button"
+                                    onClick={() => navigate(`/client/verify?ipfs_cid=${selectedTickRound.ipfs_cid}&round_pda=${selectedTickRound.solana_address}`)}
+                                    disabled={!selectedTickRound.ipfs_cid || !selectedTickRound.solana_address}
+                                >
+                                    Verify Details
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </DialogContent>
