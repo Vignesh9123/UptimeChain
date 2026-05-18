@@ -6,6 +6,7 @@ import { Plus, Activity, ShieldCheck, Clock, CheckCircle, AlertTriangle, XCircle
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AddWebsiteForm } from '@/components/AddWebsiteForm';
+import { RenewWebsiteDialog } from '@/components/RenewWebsiteDialog';
 import { Input } from '@/components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,6 +20,8 @@ import { axiosClient } from '@/config';
 
 const ClientDashboard = () => {
   const [addWebsiteDialogOpen, setAddWebsiteDialogOpen] = useState(false);
+  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+  const [selectedRenewWebsite, setSelectedRenewWebsite] = useState<UserWebsite | null>(null);
   const [websites, setWebsites] = useState<UserWebsite[]>([]);
   const [latestResults, setLatestResults] = useState<any[]>([]);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
@@ -235,6 +238,23 @@ const ClientDashboard = () => {
               <AddWebsiteForm onClose={() => setAddWebsiteDialogOpen(false)} onSuccess={fetchWebsites} />
             </DialogContent>
           </Dialog>
+
+          {selectedRenewWebsite && (
+            <RenewWebsiteDialog
+              open={renewDialogOpen}
+              onOpenChange={(open) => {
+                setRenewDialogOpen(open);
+                if (!open) setSelectedRenewWebsite(null);
+              }}
+              onSuccess={() => {
+                fetchWebsites();
+                fetchOverview();
+              }}
+              websiteName={selectedRenewWebsite.name}
+              subscriptionId={selectedRenewWebsite.id}
+              checkInterval={selectedRenewWebsite.check_interval}
+            />
+          )}
         </div>
           </div>
           <Card className="hidden md:block">
@@ -387,12 +407,22 @@ const ClientDashboard = () => {
                       const isUp = latestResultOfWebsite?.status === 'UP';
                       const isUnknown = !latestResultOfWebsite || latestResultOfWebsite?.status === 'UNKNOWN';
                       const latency = latestResultOfWebsite?.responseTime;
+                      const isCancelled = website.is_cancelled;
 
                       return (
-                        <TableRow key={website.id} onClick={() => navigate(`/client/websites/${website.id}`)}>
+                        <TableRow key={website.id} onClick={() => {
+                          if (isCancelled) {
+                            setSelectedRenewWebsite(website);
+                            setRenewDialogOpen(true);
+                          } else {
+                            navigate(`/client/websites/${website.id}`);
+                          }
+                        }}>
                           <TableCell className="font-medium">{website.name}</TableCell>
                           <TableCell>
-                            {isUp ? (
+                            {isCancelled ? (
+                              <Badge className="bg-gray-500 hover:bg-gray-600">Cancelled</Badge>
+                            ) : isUp ? (
                               <Badge className="bg-green-500 hover:bg-green-600">Operational</Badge>
                             ) : 
                             isUnknown ? (
@@ -401,7 +431,7 @@ const ClientDashboard = () => {
                               <Badge variant="destructive">Downtime</Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-right">{isUp ? `${latency}ms` : '--'}</TableCell>
+                          <TableCell className="text-right">{(!isCancelled && isUp) ? `${latency}ms` : '--'}</TableCell>
                         </TableRow>
                       )
                     })}

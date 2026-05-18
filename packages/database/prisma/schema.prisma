@@ -63,6 +63,7 @@ model Subscription {
   last_checked DateTime?
   current_status CheckStatus
   is_active Boolean @default(true)
+  is_cancelled Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

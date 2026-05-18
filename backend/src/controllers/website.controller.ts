@@ -4,6 +4,7 @@ import { prisma } from "@uptime-chain/database";
 import { CheckStatus, type Website } from "@uptime-chain/database";
 import { createHash } from "crypto";
 import { program, authority } from "../config";
+import { sendEmail } from "../utils/sendMail";
 const addWebsiteSchema = z.object({
     name: z.string().min(3).max(20),
     url: z.url({
@@ -295,6 +296,169 @@ export const activateSubscription = async (req: Request, res: Response) => {
         }
 
         return res.status(200).json({ message: "Subscription activated", data: updated });
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" });
+    }
+}
+
+export const processDailyRenewals = async (req: Request, res: Response) => {
+    try {
+        const cronSecret = req.headers["x-cron-secret"];
+        if (cronSecret !== process.env.CRON_SECRET) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const now = new Date();
+        const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const subscriptions = await prisma.subscription.findMany({
+            where: {
+                is_cancelled: false,
+                createdAt: {
+                    lt: startOfCurrentMonth
+                }
+            },
+            include: {
+                user: true,
+                website: true
+            }
+        });
+
+        const todayDay = now.getDate();
+        const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const isLastDayOfMonth = nextDay.getDate() === 1;
+
+        const toCancel = subscriptions.filter(sub => {
+            const subDay = sub.createdAt.getDate();
+            if (isLastDayOfMonth) {
+                return subDay >= todayDay;
+            }
+            return subDay === todayDay;
+        });
+
+        let cancelledCount = 0;
+        for (const sub of toCancel) {
+            await prisma.subscription.update({
+                where: { id: sub.id },
+                data: {
+                    is_cancelled: true,
+                    is_active: false
+                }
+            });
+
+            const activeSubs = await prisma.subscription.findMany({
+                where: { websiteId: sub.websiteId, is_active: true },
+                select: { check_interval: true }
+            });
+
+            if (activeSubs.length === 0) {
+                await prisma.websiteSchedule.deleteMany({
+                    where: { websiteId: sub.websiteId }
+                });
+            } else {
+                const minIntervalSeconds = Math.min(...activeSubs.map((s) => s.check_interval));
+                const schedule = await prisma.websiteSchedule.findFirst({
+                    where: { websiteId: sub.websiteId }
+                });
+                if (schedule && minIntervalSeconds < schedule.interval_seconds) {
+                    await prisma.websiteSchedule.update({
+                        where: { id: schedule.id },
+                        data: {
+                            interval_seconds: minIntervalSeconds,
+                            next_run: new Date(Date.now() + minIntervalSeconds * 1000)
+                        }
+                    });
+                }
+            }
+
+            await sendEmail({
+                email: sub.user.email,
+                subject: `Subscription Renewal Required for ${sub.name}`,
+                message: `<p>Your subscription for ${sub.website.url} has reached its monthly renewal date. It has been paused.</p><p>Please log in to your UptimeChain dashboard to pay the renewal fee and reactivate your subscription.</p>`
+            });
+            cancelledCount++;
+        }
+
+        return res.status(200).json({ message: `Processed ${cancelledCount} renewals.` });
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" });
+    }
+}
+
+export const renewSubscription = async (req: Request, res: Response) => {
+    try {
+        const subscriptionId = req.params.id as string;
+        
+        const updated = await prisma.$transaction(async (tx) => {
+            const subscription = await tx.subscription.findFirst({
+                where: {
+                    id: subscriptionId,
+                    userId: req.user.id,
+                },
+                select: {
+                    id: true,
+                    websiteId: true,
+                    is_cancelled: true,
+                    is_active: true
+                },
+            });
+
+            if (!subscription) {
+                return null;
+            }
+
+            if (subscription.is_cancelled) {
+                await tx.subscription.update({
+                    where: { id: subscription.id },
+                    data: { is_cancelled: false, is_active: true, createdAt: new Date() },
+                });
+            }
+
+            const activeSubs = await tx.subscription.findMany({
+                where: {
+                    websiteId: subscription.websiteId,
+                    is_active: true,
+                },
+                select: { check_interval: true },
+            });
+
+            if (activeSubs.length === 0) {
+                return { websiteId: subscription.websiteId, schedule: null };
+            }
+
+            const minIntervalSeconds = Math.min(...activeSubs.map((s) => s.check_interval));
+
+            const schedule = await tx.websiteSchedule.findFirst({
+                where: { websiteId: subscription.websiteId },
+                select: { id: true, interval_seconds: true },
+            });
+
+            if (!schedule) {
+                await tx.websiteSchedule.create({
+                    data: {
+                        websiteId: subscription.websiteId,
+                        interval_seconds: minIntervalSeconds,
+                        next_run: new Date(Date.now() + 5000),
+                    },
+                });
+            } else if (minIntervalSeconds < schedule.interval_seconds) {
+                await tx.websiteSchedule.update({
+                    where: { id: schedule.id },
+                    data: {
+                        interval_seconds: minIntervalSeconds,
+                        next_run: new Date(Date.now() + minIntervalSeconds * 1000),
+                    },
+                });
+            }
+
+            return { websiteId: subscription.websiteId, schedule: { minIntervalSeconds } };
+        });
+
+        if (!updated) {
+            return res.status(404).json({ message: "User website not found" });
+        }
+
+        return res.status(200).json({ message: "Subscription renewed successfully", data: updated });
     } catch (error) {
         return res.status(500).json({ message: (error as any)?.message || "Something went wrong" });
     }

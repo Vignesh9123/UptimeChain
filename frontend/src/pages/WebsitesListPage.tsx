@@ -18,12 +18,15 @@ import { useUserStore } from '@/store/userStore';
 import { getUserWebsites, getLatestResultsForUser, type UserWebsite } from '@/services/website.service';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AddWebsiteForm } from '@/components/AddWebsiteForm';
+import { RenewWebsiteDialog } from '@/components/RenewWebsiteDialog';
 
 const WebsitesListPage = () => {
     const [websites, setWebsites] = useState<UserWebsite[]>([]);
     const [latestResults, setLatestResults] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [addWebsiteDialogOpen, setAddWebsiteDialogOpen] = useState(false);
+    const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+    const [selectedRenewWebsite, setSelectedRenewWebsite] = useState<UserWebsite | null>(null);
     const { isAuthenticated, isLoading: authLoading } = useUserStore();
     const navigate = useNavigate();
 
@@ -61,7 +64,15 @@ const WebsitesListPage = () => {
         return { status: result.status, latency: result.responseTime };
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (status: string, isCancelled?: boolean) => {
+        if (isCancelled) {
+            return (
+                <Badge className="bg-gray-500/15 text-gray-600 border-gray-500/30 hover:bg-gray-500/20 gap-1.5 px-2.5 py-1">
+                    <XCircle className="h-3 w-3" />
+                    Cancelled
+                </Badge>
+            );
+        }
         switch (status) {
             case 'UP':
                 return (
@@ -130,6 +141,22 @@ const WebsitesListPage = () => {
                         <AddWebsiteForm onClose={() => setAddWebsiteDialogOpen(false)} onSuccess={fetchWebsites} />
                     </DialogContent>
                 </Dialog>
+
+                {selectedRenewWebsite && (
+                    <RenewWebsiteDialog
+                        open={renewDialogOpen}
+                        onOpenChange={(open) => {
+                            setRenewDialogOpen(open);
+                            if (!open) setSelectedRenewWebsite(null);
+                        }}
+                        onSuccess={() => {
+                            fetchWebsites();
+                        }}
+                        websiteName={selectedRenewWebsite.name}
+                        subscriptionId={selectedRenewWebsite.id}
+                        checkInterval={selectedRenewWebsite.check_interval}
+                    />
+                )}
             </div>
 
             {isLoading ? (
@@ -167,21 +194,32 @@ const WebsitesListPage = () => {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {websites.map((website) => {
                         const { status, latency } = getStatusInfo(website.websiteId);
+                        const isCancelled = website.is_cancelled;
                         return (
                             <Card
                                 key={website.id}
                                 className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 hover:border-primary/20"
-                                onClick={() => navigate(`/client/websites/${website.id}`)}
+                                onClick={() => {
+                                    if (isCancelled) {
+                                        setSelectedRenewWebsite(website);
+                                        setRenewDialogOpen(true);
+                                    } else {
+                                        navigate(`/client/websites/${website.id}`);
+                                    }
+                                }}
                             >
                                 <CardHeader className="pb-3">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div
-                                                className={`shrink-0 h-2.5 w-2.5 rounded-full ${status === 'UP'
-                                                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                                                        : status === 'DOWN'
-                                                            ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-                                                            : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                                                className={`shrink-0 h-2.5 w-2.5 rounded-full ${
+                                                    isCancelled
+                                                        ? 'bg-gray-500 shadow-[0_0_8px_rgba(107,114,128,0.6)]'
+                                                        : status === 'UP'
+                                                            ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                                                            : status === 'DOWN'
+                                                                ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                                                                : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
                                                     }`}
                                             />
                                             <CardTitle className="text-base truncate">{website.name}</CardTitle>
@@ -195,8 +233,8 @@ const WebsitesListPage = () => {
                                     </p>
 
                                     <div className="flex items-center justify-between">
-                                        {getStatusBadge(status)}
-                                        {latency !== null && status === 'UP' && (
+                                        {getStatusBadge(status, isCancelled)}
+                                        {latency !== null && status === 'UP' && !isCancelled && (
                                             <span className="text-sm text-muted-foreground font-medium">{Math.round(latency)}ms</span>
                                         )}
                                     </div>

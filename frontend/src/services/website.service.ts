@@ -8,6 +8,7 @@ export interface UserWebsite {
     check_interval: number;
     regions: string[];
     is_active: boolean;
+    is_cancelled: boolean;
     current_status: string;
     createdAt: string;
     updatedAt: string;
