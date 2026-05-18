@@ -140,8 +140,11 @@ export function AddWebsiteForm({ className, onClose, onSuccess, ...props }: AddW
             await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
 
             await axiosClient.post('/clients/verify-amount', { signature });
-
-            const payload = pendingPayload;
+            if(!pendingPayload) return;
+            const payload = {
+                ...pendingPayload,
+                url: pendingPayload?.url.trim().replace('www.', ''),
+            };
             setPaymentDialogOpen(false);
             setPendingPayload(null);
 

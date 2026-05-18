@@ -112,7 +112,7 @@ export function websiteDownEmailTemplate(
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                     <tr>
                       <td align="center" style="border-radius:12px;background:#7c3aed;">
-                        <a href="#" style="display:inline-block;padding:12px 16px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;font-size:14px;color:#ffffff;text-decoration:none;font-weight:700;">
+                        <a href="http://localhost:5173/client" style="display:inline-block;padding:12px 16px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;font-size:14px;color:#ffffff;text-decoration:none;font-weight:700;">
                           Review in UptimeChain
                         </a>
                       </td>
