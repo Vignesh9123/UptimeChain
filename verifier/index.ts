@@ -632,7 +632,9 @@ async function submitRoundOnChain({
   const monthly_number_of_rounds = Math.floor(MONTH_SECONDS / websiteSchedule.interval_seconds)
   const cost_per_round = monthly_cost / monthly_number_of_rounds
   const rewardLamports = Math.round(cost_per_round * web3.LAMPORTS_PER_SOL);
-  const reward_per_validator = new BN((rewardLamports / submissions.length).toString());
+  console.log("Reward lamports", rewardLamports)
+  console.log("Reward / submissions", rewardLamports/submissions.length)
+  const reward_per_validator = new BN(Math.floor((rewardLamports / submissions.length)).toString());
   console.log("Reward per validator", reward_per_validator.toString())
   const bytes = Buffer.from(targetUrl, "utf8");
   const target_id = Array.from(
