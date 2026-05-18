@@ -98,7 +98,7 @@ const ClientDashboard = () => {
     // setIsLoadingWebsites(true);
     getLatestResultsForUser()
       .then(data => {
-        console.log(data)
+        // console.log(data)
         setLatestResults(data);
       })
       .catch(err => {
@@ -196,7 +196,7 @@ const ClientDashboard = () => {
           </div>
           <div className='flex gap-2'>
             <WalletMultiButton className="!bg-primary !h-10" />
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden items-center gap-2">
               <Input
                 type="number"
                 min="0"
@@ -371,7 +371,7 @@ const ClientDashboard = () => {
                         return [`${Number(value).toFixed(2)}%`, 'Uptime']
                       }}
                     />
-                    <Bar dataKey="uptime" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+                    <Bar dataKey="uptime" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-[#00FF00]" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -404,14 +404,15 @@ const ClientDashboard = () => {
                   <TableBody>
                     {websites.map((website) => {
                       const latestResultOfWebsite = latestResults.find((result) => result.websiteId === website.websiteId)
-                      console.log(latestResultOfWebsite)
                       const isUp = latestResultOfWebsite?.status === 'UP';
                       const isUnknown = !latestResultOfWebsite || latestResultOfWebsite?.status === 'UNKNOWN';
                       const latency = latestResultOfWebsite?.responseTime;
                       const isCancelled = website.is_cancelled;
+                      const isActive = website.is_active;
+                      
 
                       return (
-                        <TableRow key={website.id} onClick={() => {
+                        <TableRow className='cursor-pointer' key={website.id} onClick={() => {
                           if (isCancelled) {
                             setSelectedRenewWebsite(website);
                             setRenewDialogOpen(true);
@@ -423,7 +424,11 @@ const ClientDashboard = () => {
                           <TableCell>
                             {isCancelled ? (
                               <Badge className="bg-gray-500 hover:bg-gray-600">Cancelled</Badge>
-                            ) : isUp ? (
+                            ) : 
+                            !isActive ? (
+                              <Badge className="bg-gray-500 hover:bg-gray-600">Paused</Badge>
+                            ) : 
+                            isUp ? (
                               <Badge className="bg-green-500 hover:bg-green-600">Operational</Badge>
                             ) : 
                             isUnknown ? (
