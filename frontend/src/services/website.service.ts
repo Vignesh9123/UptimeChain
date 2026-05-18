@@ -10,6 +10,7 @@ export interface UserWebsite {
     is_active: boolean;
     is_cancelled: boolean;
     current_status: string;
+    billed_till: string;
     createdAt: string;
     updatedAt: string;
     website: {

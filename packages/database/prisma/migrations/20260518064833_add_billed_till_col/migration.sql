@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Subscription" ADD COLUMN     "billed_till" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

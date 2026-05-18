@@ -72,6 +72,7 @@ export const addWebsite = async (req: Request, res: Response) => {
                 is_active: cleanedBody.is_active,
                 regions: cleanedBody.regions,
                 current_status: CheckStatus.UNKNOWN,
+                billed_till: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             }
         })
         const existingSchedule = await prisma.websiteSchedule.findFirst({
@@ -309,13 +310,12 @@ export const processDailyRenewals = async (req: Request, res: Response) => {
         }
 
         const now = new Date();
-        const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
         const subscriptions = await prisma.subscription.findMany({
             where: {
                 is_cancelled: false,
-                createdAt: {
-                    lt: startOfCurrentMonth
+                billed_till: {
+                    lte: now
                 }
             },
             include: {
@@ -324,17 +324,7 @@ export const processDailyRenewals = async (req: Request, res: Response) => {
             }
         });
 
-        const todayDay = now.getDate();
-        const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-        const isLastDayOfMonth = nextDay.getDate() === 1;
-
-        const toCancel = subscriptions.filter(sub => {
-            const subDay = sub.createdAt.getDate();
-            if (isLastDayOfMonth) {
-                return subDay >= todayDay;
-            }
-            return subDay === todayDay;
-        });
+        const toCancel = subscriptions;
 
         let cancelledCount = 0;
         for (const sub of toCancel) {
@@ -410,7 +400,11 @@ export const renewSubscription = async (req: Request, res: Response) => {
             if (subscription.is_cancelled) {
                 await tx.subscription.update({
                     where: { id: subscription.id },
-                    data: { is_cancelled: false, is_active: true, createdAt: new Date() },
+                    data: { 
+                        is_cancelled: false, 
+                        is_active: true, 
+                        billed_till: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
+                    },
                 });
             }
 

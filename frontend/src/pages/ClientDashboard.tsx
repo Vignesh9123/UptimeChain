@@ -397,6 +397,7 @@ const ClientDashboard = () => {
                     <TableRow>
                       <TableHead>Service</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Renews On</TableHead>
                       <TableHead className="text-right">Latency</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -430,6 +431,9 @@ const ClientDashboard = () => {
                             ) : (
                               <Badge variant="destructive">Downtime</Badge>
                             )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(website.billed_till).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">{(!isCancelled && isUp) ? `${latency}ms` : '--'}</TableCell>
                         </TableRow>

@@ -11,6 +11,7 @@ import {
     XCircle,
     HelpCircle,
     ArrowLeft,
+    Calendar,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -239,7 +240,7 @@ const WebsitesListPage = () => {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-4 pt-2 border-t text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-4 pt-2 border-t text-xs text-muted-foreground flex-wrap">
                                         <span className="flex items-center gap-1.5">
                                             <Clock className="h-3 w-3" />
                                             Every {formatInterval(website.check_interval)}
@@ -247,6 +248,10 @@ const WebsitesListPage = () => {
                                         <span className="flex items-center gap-1.5">
                                             <Activity className="h-3 w-3" />
                                             {website.is_active ? 'Active' : 'Paused'}
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <Calendar className="h-3 w-3" />
+                                            Renews {new Date(website.billed_till).toLocaleDateString()}
                                         </span>
                                     </div>
                                 </CardContent>
