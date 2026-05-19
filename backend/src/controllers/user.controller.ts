@@ -42,6 +42,19 @@ const sendOtpSchema = z.object({
     email: z.email(),
 })
 
+const forgotPasswordSchema = z.object({
+    email: z.email(),
+})
+
+const resetPasswordSchema = z.object({
+    email: z.email(),
+    token: z.string().regex(/^\d{6}$/, "Token must be a 6 digit code"),
+    newPassword: z
+        .string()
+        .min(8, "Password should be at least 8 characters long")
+        .max(20, "Password should be at most 50 characters long"),
+})
+
 function generateSixDigitToken() {
     const token = Math.floor(100000 + Math.random() * 900000).toString()
     console.log("Token is", token)
@@ -256,6 +269,73 @@ export const sendOtp = async (req: Request, res: Response) => {
             console.error("Failed to send verification email", e)
         }
         return res.status(200).json({ message: "OTP sent" })
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
+    }
+}
+
+export const forgotPassword = async (req: Request, res: Response) => {
+    try {
+        const cleanedBody = forgotPasswordSchema.parse(req.body)
+        const user = await prisma.user.findUnique({
+            where: { email: cleanedBody.email },
+        })
+        if (!user) {
+            // To prevent email enumeration, we return success even if the user doesn't exist.
+            return res.status(200).json({ message: "If your email is registered, you will receive an OTP." })
+        }
+
+        const otp = generateSixDigitToken()
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { is_verified: false, token: otp },
+        })
+
+        try {
+            await sendVerificationOtpEmail(user.email, otp)
+        } catch (e) {
+            console.error("Failed to send verification email", e)
+        }
+
+        return res.status(200).json({ message: "OTP sent. Please verify to reset your password." })
+    } catch (error) {
+        return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
+    }
+}
+
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        const cleanedBody = resetPasswordSchema.parse(req.body)
+        const user = await prisma.user.findUnique({
+            where: { email: cleanedBody.email },
+        })
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" })
+        }
+
+        if (user.token !== cleanedBody.token) {
+            return res.status(400).json({ message: "Invalid token" })
+        }
+
+        const hashedPassword = await bcrypt.hash(cleanedBody.newPassword, 10)
+
+        const updated = await prisma.user.update({
+            where: { id: user.id },
+            data: { password: hashedPassword, is_verified: true, token: "" },
+        })
+
+        const jwtToken = jwt.sign({ id: updated.id }, env.JWT_SECRET_KEY, { expiresIn: "1d" })
+        updated.password = null
+
+        return res.status(200).json({
+            message: "Password reset successful",
+            token: jwtToken,
+            user: {
+                ...updated,
+                wallet_balance: updated.wallet_balance.toString(),
+            },
+        })
     } catch (error) {
         return res.status(500).json({ message: (error as any)?.message || "Something went wrong" })
     }

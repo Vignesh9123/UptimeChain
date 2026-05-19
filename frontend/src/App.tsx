@@ -10,6 +10,8 @@ import VerificationPage from './pages/VerificationPage';
 import Login from './pages/LoginPage';
 import Register from './pages/RegisterPage';
 import OtpPage from './pages/OtpPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { AuthProvider } from './components/AuthProvider';
 import { ThemeProvider } from './components/theme-provider';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
@@ -34,6 +36,8 @@ function App() {
                   <Route path="/login" element={<Layout><Login /></Layout>} />
                   <Route path="/register" element={<Layout><Register /></Layout>} />
                   <Route path="/otp" element={<Layout><OtpPage /></Layout>} />
+                  <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
+                  <Route path="/reset-password" element={<Layout><ResetPasswordPage /></Layout>} />
                   <Route path="/client" element={<Layout><ClientDashboard /></Layout>} />
                   <Route path="/client/add-website" element={<Layout><AddWebsitePage /></Layout>} />
                   <Route path="/client/websites" element={<Layout><WebsitesListPage /></Layout>} />

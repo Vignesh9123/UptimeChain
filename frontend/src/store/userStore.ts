@@ -20,6 +20,8 @@ interface UserState {
     register: (data: any) => Promise<any>;
     verifyOtp: (payload: { email: string; token: string }) => Promise<User>;
     sendOtp: (email: string) => Promise<void>;
+    forgotPassword: (email: string) => Promise<void>;
+    resetPassword: (payload: { email: string; token: string; newPassword: string }) => Promise<User>;
     logout: () => void;
     checkAuth: () => Promise<void>;
     clearError: () => void;
@@ -82,6 +84,33 @@ export const useUserStore = create<UserState>((set) => ({
             set({ isLoading: false });
         } catch (error: any) {
             const message = error.response?.data?.message || 'Failed to send OTP';
+            set({ error: message, isLoading: false });
+            throw error;
+        }
+    },
+
+    forgotPassword: async (email) => {
+        set({ isLoading: true, error: null });
+        try {
+            await axiosClient.post('/users/forgot-password', { email });
+            set({ isLoading: false });
+        } catch (error: any) {
+            const message = error.response?.data?.message || 'Failed to request password reset';
+            set({ error: message, isLoading: false });
+            throw error;
+        }
+    },
+
+    resetPassword: async (payload) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await axiosClient.post('/users/reset-password', payload);
+            const { token, user } = response.data;
+            localStorage.setItem('token', token);
+            set({ user, isAuthenticated: true, isLoading: false });
+            return user;
+        } catch (error: any) {
+            const message = error.response?.data?.message || 'Failed to reset password';
             set({ error: message, isLoading: false });
             throw error;
         }

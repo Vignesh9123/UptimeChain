@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Mail, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useUserStore } from "@/store/userStore";
 import { Select, SelectGroup, SelectItem, SelectLabel, SelectValue, SelectTrigger, SelectContent } from "./ui/select";
@@ -688,12 +688,12 @@ function LoginPage({ registerPage, roleFromQuery }: { registerPage?: boolean, ro
             }
 
             <div className="flex items-center justify-end">
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="text-sm text-primary hover:underline font-medium"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {(localError || storeError) && (
