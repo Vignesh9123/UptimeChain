@@ -112,7 +112,7 @@ const WebsitesListPage = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between gap-2 md:items-center">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" asChild className="rounded-full">
                         <Link to="/client">

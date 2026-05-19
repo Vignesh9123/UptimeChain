@@ -326,12 +326,12 @@ const ValidatorDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-y-2 md:flex-row justify-between md:items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Validator Node</h2>
           <p className="text-muted-foreground">Node ID: {nodeIdShort} • Region: {regionText}</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <WalletMultiButton className="!bg-primary !h-10" />
           {isNodeActive ? (
             <Badge variant="outline" className="text-green-600 border-green-600 px-4 py-1">Node Active</Badge>

@@ -253,7 +253,7 @@ export const getWebsiteResults = async (req: Request, res: Response) => {
                 createdAt: 'desc'
             }
         })
-        const toleranceMs = 120000 // 2 min tolerance (interval cannot be < 5 min)
+        const toleranceMs = 180000 // 3 min tolerance (interval cannot be < 5 min)
         const intervalMs = subscription.check_interval * 1000
 
         if (intervalMs <= 0 || results.length === 0) {

@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUserStore } from "../store/userStore";
+import { LogInIcon, LogOutIcon, SquareStack } from "lucide-react";
 const Navbar = ({ className }: { className?: string }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, isAuthenticated, logout } = useUserStore();
@@ -30,11 +31,16 @@ const Navbar = ({ className }: { className?: string }) => {
             to="/client/websites"
             className="transform rounded-lg border border-border px-4 py-2 font-medium transition-all duration-300 hover:-translate-y-0.5 hover:bg-muted text-sm"
           >
-            My Websites
+            <p className="hidden md:block">My Websites</p>
+            <p className="block md:hidden"><SquareStack /></p>
+
           </Link>
         )}
-        <Link onClick={() => { if (isAuthenticated) { logout() } }} to={isAuthenticated && user?.role.toLowerCase() === "client" ? "/client" : isAuthenticated && user?.role.toLowerCase() === "validator" ? "/validator" : "/login"} className="transform rounded-lg bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 dark:bg-white dark:text-black dark:hover:bg-gray-200 text-center">
+        <Link onClick={() => { if (isAuthenticated) { logout() } }} to={isAuthenticated && user?.role.toLowerCase() === "client" ? "/client" : isAuthenticated && user?.role.toLowerCase() === "validator" ? "/validator" : "/login"} className="hidden md:block transform rounded-lg bg-black px-6 py-2 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 dark:bg-white dark:text-black dark:hover:bg-gray-200 text-center">
           {isAuthenticated ? "Logout" : "Login"}
+        </Link>
+        <Link onClick={() => { if (isAuthenticated) { logout() } }} to={isAuthenticated && user?.role.toLowerCase() === "client" ? "/client" : isAuthenticated && user?.role.toLowerCase() === "validator" ? "/validator" : "/login"} className="block md:hidden transform rounded-lg bg-black px-2 py-1 font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-800 md:w-32 dark:bg-white dark:text-black dark:hover:bg-gray-200 text-center">
+          {isAuthenticated ? <LogOutIcon/> : <LogInIcon/>}
         </Link>
       </div>
     </nav>

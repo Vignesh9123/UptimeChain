@@ -38,6 +38,7 @@ export const addWebsite = async (req: Request, res: Response) => {
             const target_id = Array.from(
                 createHash("sha256").update(bytes).digest()
             );
+            try {
             const txn1 = await program?.methods?.initializeTarget?.(target_id)
                 .accounts({
                 authority: authority.publicKey
@@ -45,6 +46,9 @@ export const addWebsite = async (req: Request, res: Response) => {
                 .signers([authority])
                 .rpc()
             console.log("Initialize target transaction: ", txn1);
+            }catch(error){
+                console.log("Initialize target transaction failed: ", error);
+            }
             website = await prisma.website.create({
                 data: {
                     url: cleanedBody.url,
@@ -117,6 +121,9 @@ export const getUserWebsites = async (req: Request, res: Response) => {
             },
             include: {
                 website: true,
+            },
+            orderBy: {
+                createdAt: "desc"
             },
             take: Number(take),
             skip: Number(skip),

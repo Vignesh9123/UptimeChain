@@ -189,7 +189,7 @@ const ClientDashboard = () => {
   if (!isLoading && isAuthenticated) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 md:flex-row justify-between items-center">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Client Dashboard</h2>
             <p className="text-muted-foreground">Overview of your monitored endpoints and system health.</p>
@@ -257,13 +257,13 @@ const ClientDashboard = () => {
           )}
         </div>
           </div>
-          <Card className="hidden md:block">
+          <Card className="">
               <CardHeader className="py-2">
-                <CardTitle className="text-xs font-medium">Wallet balance</CardTitle>
+                <CardTitle className="md:text-xs font-medium">Wallet balance</CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
-                <div className="text-sm font-semibold">{walletBalanceSolText} SOL</div>
-                <div className="text-[10px] text-muted-foreground">{walletBalanceLamportsText} lamports</div>
+                <div className="md:text-sm font-semibold">{walletBalanceSolText} SOL</div>
+                <div className="text-sm md:text-[10px] text-muted-foreground">{walletBalanceLamportsText} lamports</div>
               </CardContent>
             </Card>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -381,7 +381,7 @@ const ClientDashboard = () => {
           <Card className="col-span-3">
             <CardHeader>
               <CardTitle>Monitored Websites</CardTitle>
-              <CardDescription>Real-time status of your endpoints.</CardDescription>
+              <CardDescription>Real-time status of your last 4 endpoints.</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingWebsites ? (
@@ -392,17 +392,17 @@ const ClientDashboard = () => {
                   <Button size="sm" onClick={() => setAddWebsiteDialogOpen(true)}>Add your first website</Button>
                 </div>
               ) : (
-                <Table>
+                <Table >
                   <TableHeader>
                     <TableRow>
                       <TableHead>Service</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Renews On</TableHead>
+                      <TableHead className="hidden md:block">Renews On</TableHead>
                       <TableHead className="text-right">Latency</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {websites.map((website) => {
+                    {websites.slice(0, 4).map((website) => {
                       const latestResultOfWebsite = latestResults.find((result) => result.websiteId === website.websiteId)
                       const isUp = latestResultOfWebsite?.status === 'UP';
                       const isUnknown = !latestResultOfWebsite || latestResultOfWebsite?.status === 'UNKNOWN';
@@ -437,7 +437,7 @@ const ClientDashboard = () => {
                               <Badge variant="destructive">Downtime</Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          <TableCell className="hidden md:block text-sm text-muted-foreground">
                             {new Date(website.billed_till).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">{(!isCancelled && isUp) ? `${latency}ms` : '--'}</TableCell>
